@@ -1,42 +1,97 @@
-import { Sidebar } from "./Sidebar";
-import { useTheme } from "../../contexts/ThemeContext";
-import { Moon, Sun } from "lucide-react";
-import { Button } from "../ui/button";
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { User, Settings, LogOut } from "lucide-react"
+import Sidebar from "./Sidebar"
+import { Toaster } from "@/components/ui/toaster"
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
-export function Layout({ children }: LayoutProps) {
-  const { theme, toggleTheme } = useTheme();
+export default function Layout({ children }: LayoutProps) {
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate("/login")
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error)
+    }
+  }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <header className="h-16 px-6 border-b border-purple-500/20 flex items-center justify-end bg-background/80 backdrop-blur-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="rounded-full w-10 h-10 hover:bg-purple-500/10"
-            title={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-[1.4rem] w-[1.4rem] rotate-0 scale-100 transition-all dark:rotate-90 dark:scale-0" />
-            ) : (
-              <Moon className="absolute h-[1.4rem] w-[1.4rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            )}
-            <span className="sr-only">Alternar tema</span>
-          </Button>
-        </header>
-        <main className="flex-1 p-8 gradient-background overflow-auto">
-          {children}
-        </main>
-        <footer className="p-4 text-center text-muted-foreground bg-background/40 backdrop-blur-sm border-t border-purple-500/20">
-          Desenvolvido por Plazer® {new Date().getFullYear()}
-        </footer>
+    <div className="min-h-screen bg-background">
+      <div className="flex">
+        <Sidebar />
+        <div className="flex-1 overflow-auto">
+          {/* Header */}
+          <header className="border-b">
+            <div className="flex h-16 items-center px-4 gap-4">
+              <div className="ml-auto flex items-center space-x-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-8 w-8 rounded-full"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
+                        <AvatarFallback>
+                          {user?.displayName?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user?.displayName}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/perfil")}>
+                      <User className="mr-2 h-4 w-4" />
+                      Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/perfil?tab=senha")}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configurações
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </header>
+
+          {/* Main content */}
+          <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            {children}
+          </main>
+          <Toaster />
+        </div>
       </div>
     </div>
-  );
+  )
 }

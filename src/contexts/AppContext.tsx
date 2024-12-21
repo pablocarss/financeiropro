@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 interface Categoria {
-  id: number;
+  id: string;
   nome: string;
   tipo: 'entrada' | 'saida';
 }
@@ -65,13 +65,13 @@ interface AppContextType {
   adicionarCentroCusto: (centro: Omit<CentroCusto, 'id'>) => void;
   adicionarTipoDocumento: (tipo: Omit<TipoDocumento, 'id'>) => void;
   adicionarLancamento: (lancamento: Omit<Lancamento, 'id'>) => void;
-  editarCategoria: (id: number, categoria: Partial<Categoria>) => void;
+  editarCategoria: (id: string, categoria: Partial<Categoria>) => void;
   editarContaBancaria: (id: number, conta: Partial<ContaBancaria>) => void;
   editarFormaPagamento: (id: number, forma: Partial<FormaPagamento>) => void;
   editarCentroCusto: (id: number, centro: Partial<CentroCusto>) => void;
   editarTipoDocumento: (id: number, tipo: Partial<TipoDocumento>) => void;
   editarLancamento: (id: number, lancamento: Partial<Lancamento>) => void;
-  removerCategoria: (id: number) => void;
+  removerCategoria: (id: string) => void;
   removerContaBancaria: (id: number) => void;
   removerFormaPagamento: (id: number) => void;
   removerCentroCusto: (id: number) => void;
@@ -141,7 +141,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [lancamentos]);
 
   const adicionarCategoria = (categoria: Omit<Categoria, 'id'>) => {
-    setCategorias(prev => [...prev, { ...categoria, id: Date.now() }]);
+    setCategorias(prev => [...prev, { ...categoria, id: Date.now().toString() }]);
   };
 
   const adicionarContaBancaria = (conta: Omit<ContaBancaria, 'id'>) => {
@@ -164,7 +164,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLancamentos(prev => [...prev, { ...lancamento, id: Date.now() }]);
   };
 
-  const editarCategoria = (id: number, categoria: Partial<Categoria>) => {
+  const editarCategoria = (id: string, categoria: Partial<Categoria>) => {
     setCategorias(prev => prev.map(item => item.id === id ? { ...item, ...categoria } : item));
   };
 
@@ -188,7 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLancamentos(prev => prev.map(item => item.id === id ? { ...item, ...lancamento } : item));
   };
 
-  const removerCategoria = (id: number) => {
+  const removerCategoria = (id: string) => {
     setCategorias(prev => prev.filter(item => item.id !== id));
   };
 

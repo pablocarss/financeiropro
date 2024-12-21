@@ -10,13 +10,15 @@ import {
   FileText,
   LayoutDashboard,
   ListTodo,
+  Receipt,
   Tags,
+  TrendingUp,
   Users,
 } from "lucide-react";
 
 const menuItems = [
   {
-    path: "/",
+    path: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
   },
@@ -65,30 +67,43 @@ const menuItems = [
     label: "Conciliação Bancária",
     icon: FileCheck,
   },
+  {
+    path: "/previsao",
+    label: "Previsão",
+    icon: TrendingUp,
+  },
 ];
 
-export function Sidebar() {
+export default function Sidebar() {
   const { pathname } = useLocation();
 
   return (
-    <aside className="w-72 border-r border-zinc-800 bg-zinc-900 p-6">
-      <Link to="/" className="flex items-center gap-2 mb-8">
-        <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
-        <span className="font-bold text-xl text-zinc-100">FINANCEIRO PRO+</span>
-      </Link>
+    <aside className="hidden md:flex h-screen w-72 flex-col bg-background border-r">
+      <div className="p-6">
+        <Link to="/dashboard" className="flex items-center gap-2 px-4 py-3">
+          <img 
+            src="/public/vite.svg" 
+            alt="FinanceiroPRO" 
+            className="w-8 h-8"
+          />
+          <span className="font-bold text-xl">FinanceiroPRO</span>
+        </Link>
+      </div>
 
-      <nav className="space-y-0.5">
+      <nav className="flex-1 space-y-1 p-4">
         {menuItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "flex items-center gap-3 rounded px-3 py-2 hover:bg-zinc-800",
-              pathname === item.path && "bg-zinc-800"
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname === item.path
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
-            <item.icon className="w-5 h-5 text-zinc-500" />
-            <span className="font-medium text-zinc-100">{item.label}</span>
+            <item.icon className="h-4 w-4" />
+            {item.label}
           </Link>
         ))}
       </nav>

@@ -1,459 +1,139 @@
-import { Check, ChevronsUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowDown, ArrowUp, DollarSign } from "lucide-react";
-import { useApp } from "@/contexts/AppContext";
-import { useEffect, useState } from "react";
-import { ResponsiveLine } from '@nivo/line';
-import { ResponsivePie } from '@nivo/pie';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { HelpCircle } from "lucide-react"
+import { useApp } from "@/contexts/AppContext"
+import { useEffect, useState } from "react"
+import { Tooltip } from "@/components/ui/tooltip"
+import { ResponsivePie } from '@nivo/pie'
 
 export default function Dashboard() {
-  const { lancamentos, categorias, contasBancarias } = useApp();
-  const [totais, setTotais] = useState({ receitas: 0, despesas: 0, saldo: 0 });
-  const [fluxoCaixa, setFluxoCaixa] = useState<Array<{ mes: string; receitas: number; despesas: number }>>([]);
-  const [categoriasDespesas, setCategoriasDespesas] = useState<Array<{ nome: string; valor: number }>>([]);
-  const [categoriasReceitas, setCategoriasReceitas] = useState<Array<{ nome: string; valor: number }>>([]);
-  const [saldosPorConta, setSaldosPorConta] = useState<Array<{ nome: string; saldo: number }>>([]);
-  const [saldoTotal, setSaldoTotal] = useState(0);
-  const [receitasMes, setReceitasMes] = useState(0);
-  const [despesasMes, setDespesasMes] = useState(0);
-  const [saldoMes, setSaldoMes] = useState(0);
-  const [dadosSaldo, setDadosSaldo] = useState([]);
-  const [dadosReceitas, setDadosReceitas] = useState([]);
-  const [dadosDespesas, setDadosDespesas] = useState([]);
-  const [dadosBalanco, setDadosBalanco] = useState([]);
+  const { lancamentos, categorias, contasBancarias } = useApp()
+  const [totais, setTotais] = useState({
+    saldoTotal: 0,
+    receitas: 0,
+    despesas: 0,
+    balanco: 0
+  })
+
+  const [dadosGraficoDespesas, setDadosGraficoDespesas] = useState([])
+  const [dadosGraficoReceitas, setDadosGraficoReceitas] = useState([])
 
   useEffect(() => {
-    // Reseta todos os estados se não houver dados
-    if (!Array.isArray(lancamentos) || !Array.isArray(categorias) || !Array.isArray(contasBancarias)) {
-      setTotais({ receitas: 0, despesas: 0, saldo: 0 });
-      setFluxoCaixa([]);
-      setCategoriasDespesas([]);
-      setCategoriasReceitas([]);
-      setSaldosPorConta([]);
-      setSaldoTotal(0);
-      setReceitasMes(0);
-      setDespesasMes(0);
-      setSaldoMes(0);
-      setDadosSaldo([]);
-      setDadosReceitas([]);
-      setDadosDespesas([]);
-      setDadosBalanco([]);
-      return;
-    }
+    if (!lancamentos?.length) return
 
-    // Calcula totais
-    const totaisCalculados = lancamentos.reduce((acc, lancamento) => {
-      const valor = Number(lancamento.valor) || 0;
+    const calculoTotais = lancamentos.reduce((acc, lancamento) => {
+      const valor = Number(lancamento.valor) || 0
       if (lancamento.tipo === 'entrada') {
-        acc.receitas += valor;
-      } else if (lancamento.tipo === 'saida') {
-        acc.despesas += valor;
+        acc.receitas += valor
+      } else {
+        acc.despesas += valor
       }
-      return acc;
-    }, { receitas: 0, despesas: 0 });
+      return acc
+    }, {
+      receitas: 0,
+      despesas: 0
+    })
 
-    totaisCalculados.saldo = totaisCalculados.receitas - totaisCalculados.despesas;
-    setTotais(totaisCalculados);
+    calculoTotais.balanco = calculoTotais.receitas - calculoTotais.despesas
+    setTotais(calculoTotais)
 
-    // Calcula fluxo de caixa
-    const fluxoPorMes = lancamentos.reduce((acc, lancamento) => {
-      try {
-        const data = new Date(lancamento.data);
-        const mes = data.toLocaleString('pt-BR', { month: 'short' });
-        const valor = Number(lancamento.valor) || 0;
-
-        if (!acc[mes]) {
-          acc[mes] = { mes, receitas: 0, despesas: 0 };
-        }
-
-        if (lancamento.tipo === 'entrada') {
-          acc[mes].receitas += valor;
-        } else if (lancamento.tipo === 'saida') {
-          acc[mes].despesas += valor;
-        }
-      } catch (error) {
-        console.error('Erro ao processar lançamento:', error);
-      }
-      return acc;
-    }, {} as Record<string, { mes: string; receitas: number; despesas: number }>);
-
-    const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-    const fluxoOrdenado = Object.values(fluxoPorMes).sort((a, b) => 
-      meses.indexOf(a.mes) - meses.indexOf(b.mes)
-    );
-
-    setFluxoCaixa(fluxoOrdenado);
-
-    // Calcula saldos por conta
-    const saldos = contasBancarias.map(conta => ({
-      nome: conta.nome,
-      saldo: lancamentos
-        .filter(l => l.contaBancaria === conta.id)
-        .reduce((acc, l) => {
-          const valor = Number(l.valor) || 0;
-          return l.tipo === 'entrada' ? acc + valor : acc - valor;
-        }, Number(conta.saldoInicial) || 0)
-    }));
-
-    setSaldosPorConta(saldos);
-
-    // Calcula categorias
-    const categoriasAgrupadas = {
-      receitas: {} as Record<string, number>,
-      despesas: {} as Record<string, number>
-    };
+    // Cálculo para os gráficos de pizza
+    const despesasPorCategoria = {}
+    const receitasPorCategoria = {}
 
     lancamentos.forEach(lancamento => {
-      const categoria = categorias.find(c => c.id === lancamento.categoria);
-      if (!categoria) return;
+      const categoria = categorias?.find(c => c.id === lancamento.categoria)?.nome || 'Sem categoria'
+      const valor = Number(lancamento.valor) || 0
 
-      const tipo = lancamento.tipo === 'entrada' ? 'receitas' : 'despesas';
-      const valor = Number(lancamento.valor) || 0;
-
-      if (!categoriasAgrupadas[tipo][categoria.nome]) {
-        categoriasAgrupadas[tipo][categoria.nome] = 0;
+      if (lancamento.tipo === 'entrada') {
+        receitasPorCategoria[categoria] = (receitasPorCategoria[categoria] || 0) + valor
+      } else {
+        despesasPorCategoria[categoria] = (despesasPorCategoria[categoria] || 0) + valor
       }
-      categoriasAgrupadas[tipo][categoria.nome] += valor;
-    });
+    })
 
-    const formatarCategorias = (dados: Record<string, number>) => 
-      Object.entries(dados)
-        .map(([nome, valor]) => ({ nome, valor }))
-        .sort((a, b) => b.valor - a.valor);
+    const formatarDadosGrafico = (dados) => {
+      return Object.entries(dados).map(([categoria, valor]) => ({
+        id: categoria,
+        label: categoria,
+        value: valor
+      }))
+    }
 
-    setCategoriasDespesas(formatarCategorias(categoriasAgrupadas.despesas));
-    setCategoriasReceitas(formatarCategorias(categoriasAgrupadas.receitas));
+    setDadosGraficoDespesas(formatarDadosGrafico(despesasPorCategoria))
+    setDadosGraficoReceitas(formatarDadosGrafico(receitasPorCategoria))
 
-    // Calcula saldo total
-    const saldoTotalCalculado = saldos.reduce((acc, saldo) => acc + saldo.saldo, 0);
-    setSaldoTotal(saldoTotalCalculado);
+  }, [lancamentos, categorias])
 
-    // Calcula receitas e despesas do mês
-    const dataAtual = new Date();
-    const mesAtual = dataAtual.toLocaleString('pt-BR', { month: 'short' });
-    const receitasMesCalculado = fluxoOrdenado.find(f => f.mes === mesAtual)?.receitas || 0;
-    const despesasMesCalculado = fluxoOrdenado.find(f => f.mes === mesAtual)?.despesas || 0;
-    setReceitasMes(receitasMesCalculado);
-    setDespesasMes(despesasMesCalculado);
-
-    // Calcula saldo do mês
-    const saldoMesCalculado = receitasMesCalculado - despesasMesCalculado;
-    setSaldoMes(saldoMesCalculado);
-
-    // Calcula dados para gráficos
-    const dadosSaldoCalculado = saldos.map(saldo => ({ x: saldo.nome, y: saldo.saldo }));
-    const dadosReceitasCalculado = fluxoOrdenado.map(f => ({ x: f.mes, y: f.receitas }));
-    const dadosDespesasCalculado = fluxoOrdenado.map(f => ({ x: f.mes, y: f.despesas }));
-    const dadosBalancoCalculado = fluxoOrdenado.map(f => ({ x: f.mes, y: f.receitas - f.despesas }));
-    setDadosSaldo(dadosSaldoCalculado);
-    setDadosReceitas(dadosReceitasCalculado);
-    setDadosDespesas(dadosDespesasCalculado);
-    setDadosBalanco(dadosBalancoCalculado);
-
-  }, [lancamentos, categorias, contasBancarias]);
-
-  const formatarNumero = (numero: number) => {
-    return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor)
+  }
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-zinc-100">Dashboard</h1>
+      <h1 className="text-3xl font-bold">Dashboard</h1>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Saldo Total</CardTitle>
-            <CardDescription>Todas as contas</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
+            <Tooltip>
+              <Tooltip content="Saldo total considerando todas as transações">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </Tooltip>
+            </Tooltip>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {formatarNumero(saldoTotal)}</div>
-            <div className="mt-4 h-[60px]">
-              <ResponsiveLine
-                data={[
-                  {
-                    id: "saldo",
-                    data: dadosSaldo
-                  }
-                ]}
-                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                xScale={{ type: "point" }}
-                yScale={{ type: "linear", min: "auto", max: "auto" }}
-                curve="monotoneX"
-                axisTop={null}
-                axisRight={null}
-                axisBottom={null}
-                axisLeft={null}
-                enableGridX={false}
-                enableGridY={false}
-                pointSize={4}
-                pointColor={{ theme: "background" }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: "serieColor" }}
-                pointLabelYOffset={-12}
-                useMesh={true}
-                enableArea={true}
-                areaOpacity={0.15}
-                colors={["#22c55e"]}
-                theme={{
-                  axis: {
-                    domain: {
-                      line: {
-                        stroke: "#777777",
-                        strokeWidth: 1,
-                      },
-                    },
-                    ticks: {
-                      text: {
-                        fontSize: 12,
-                        fill: "#777777",
-                      },
-                    },
-                  },
-                  grid: {
-                    line: {
-                      stroke: "#dddddd",
-                      strokeWidth: 1,
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
-              />
+            <div className="text-2xl font-bold">{formatarMoeda(totais.balanco)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+            <Tooltip>
+              <Tooltip content="Total de receitas">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </Tooltip>
+            </Tooltip>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {formatarMoeda(totais.receitas)}
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Receitas</CardTitle>
-            <CardDescription>Mês atual</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+            <Tooltip>
+              <Tooltip content="Total de despesas">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </Tooltip>
+            </Tooltip>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">
-              + R$ {formatarNumero(receitasMes)}
-            </div>
-            <div className="mt-4 h-[60px]">
-              <ResponsiveLine
-                data={[
-                  {
-                    id: "receitas",
-                    data: dadosReceitas
-                  }
-                ]}
-                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                xScale={{ type: "point" }}
-                yScale={{ type: "linear", min: 0, max: "auto" }}
-                curve="monotoneX"
-                axisTop={null}
-                axisRight={null}
-                axisBottom={null}
-                axisLeft={null}
-                enableGridX={false}
-                enableGridY={false}
-                pointSize={4}
-                pointColor={{ theme: "background" }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: "serieColor" }}
-                pointLabelYOffset={-12}
-                useMesh={true}
-                enableArea={true}
-                areaOpacity={0.15}
-                colors={["#22c55e"]}
-                theme={{
-                  axis: {
-                    domain: {
-                      line: {
-                        stroke: "#777777",
-                        strokeWidth: 1,
-                      },
-                    },
-                    ticks: {
-                      text: {
-                        fontSize: 12,
-                        fill: "#777777",
-                      },
-                    },
-                  },
-                  grid: {
-                    line: {
-                      stroke: "#dddddd",
-                      strokeWidth: 1,
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
-              />
+            <div className="text-2xl font-bold text-red-500">
+              {formatarMoeda(totais.despesas)}
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Despesas</CardTitle>
-            <CardDescription>Mês atual</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Balanço</CardTitle>
+            <Tooltip>
+              <Tooltip content="Diferença entre receitas e despesas">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </Tooltip>
+            </Tooltip>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-500">
-              - R$ {formatarNumero(despesasMes)}
-            </div>
-            <div className="mt-4 h-[60px]">
-              <ResponsiveLine
-                data={[
-                  {
-                    id: "despesas",
-                    data: dadosDespesas
-                  }
-                ]}
-                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                xScale={{ type: "point" }}
-                yScale={{ type: "linear", min: 0, max: "auto" }}
-                curve="monotoneX"
-                axisTop={null}
-                axisRight={null}
-                axisBottom={null}
-                axisLeft={null}
-                enableGridX={false}
-                enableGridY={false}
-                pointSize={4}
-                pointColor={{ theme: "background" }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: "serieColor" }}
-                pointLabelYOffset={-12}
-                useMesh={true}
-                enableArea={true}
-                areaOpacity={0.15}
-                colors={["#ef4444"]}
-                theme={{
-                  axis: {
-                    domain: {
-                      line: {
-                        stroke: "#777777",
-                        strokeWidth: 1,
-                      },
-                    },
-                    ticks: {
-                      text: {
-                        fontSize: 12,
-                        fill: "#777777",
-                      },
-                    },
-                  },
-                  grid: {
-                    line: {
-                      stroke: "#dddddd",
-                      strokeWidth: 1,
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Balanço</CardTitle>
-            <CardDescription>Mês atual</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className={saldoMes > 0 ? "text-2xl font-bold text-emerald-500" : "text-2xl font-bold text-rose-500"}>
-              {saldoMes > 0 ? "+" : "-"} R$ {formatarNumero(Math.abs(saldoMes))}
-            </div>
-            <div className="mt-4 h-[60px]">
-              <ResponsiveLine
-                data={[
-                  {
-                    id: "balanço",
-                    data: dadosBalanco
-                  }
-                ]}
-                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                xScale={{ type: "point" }}
-                yScale={{ type: "linear", min: "auto", max: "auto" }}
-                curve="monotoneX"
-                axisTop={null}
-                axisRight={null}
-                axisBottom={null}
-                axisLeft={null}
-                enableGridX={false}
-                enableGridY={false}
-                pointSize={4}
-                pointColor={{ theme: "background" }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: "serieColor" }}
-                pointLabelYOffset={-12}
-                useMesh={true}
-                enableArea={true}
-                areaOpacity={0.15}
-                colors={[saldoMes > 0 ? "#22c55e" : "#ef4444"]}
-                theme={{
-                  axis: {
-                    domain: {
-                      line: {
-                        stroke: "#777777",
-                        strokeWidth: 1,
-                      },
-                    },
-                    ticks: {
-                      text: {
-                        fontSize: 12,
-                        fill: "#777777",
-                      },
-                    },
-                  },
-                  grid: {
-                    line: {
-                      stroke: "#dddddd",
-                      strokeWidth: 1,
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
-              />
+            <div className={`text-2xl font-bold ${totais.balanco >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {formatarMoeda(totais.balanco)}
             </div>
           </CardContent>
         </Card>
@@ -464,49 +144,32 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Categorias de Receitas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="h-[300px]">
+            {dadosGraficoReceitas.length > 0 ? (
               <ResponsivePie
-                data={categoriasReceitas}
-                margin={{ top: 20, right: 0, bottom: 20, left: 0 }}
-                innerRadius={0.6}
+                data={dadosGraficoReceitas}
+                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                innerRadius={0.5}
                 padAngle={0.7}
                 cornerRadius={3}
                 activeOuterRadiusOffset={8}
-                colors={{ scheme: 'greens' }}
+                colors={{ scheme: 'category10' }}
                 borderWidth={1}
-                borderColor={{
-                  from: 'color',
-                  modifiers: [['darker', 0.2]]
-                }}
-                enableArcLinkLabels={true}
-                arcLinkLabelsSkipAngle={10}
-                arcLinkLabelsTextColor="#777777"
-                arcLinkLabelsThickness={2}
-                arcLinkLabelsColor={{ from: 'color' }}
+                borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+                enableArcLinkLabels={false}
                 arcLabelsSkipAngle={10}
-                arcLabelsTextColor="#ffffff"
+                arcLabelsTextColor="white"
                 tooltip={({ datum }) => (
-                  <div className="bg-white dark:bg-zinc-950 p-2 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800">
-                    <strong>{datum.id}</strong>: R$ {formatarNumero(datum.value)}
+                  <div className="bg-background p-2 rounded-lg border">
+                    <strong>{datum.label}:</strong> {formatarMoeda(datum.value)}
                   </div>
                 )}
-                theme={{
-                  labels: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
               />
-            </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Nenhuma receita registrada
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -514,52 +177,35 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Categorias de Despesas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="h-[300px]">
+            {dadosGraficoDespesas.length > 0 ? (
               <ResponsivePie
-                data={categoriasDespesas}
-                margin={{ top: 20, right: 0, bottom: 20, left: 0 }}
-                innerRadius={0.6}
+                data={dadosGraficoDespesas}
+                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                innerRadius={0.5}
                 padAngle={0.7}
                 cornerRadius={3}
                 activeOuterRadiusOffset={8}
-                colors={{ scheme: 'reds' }}
+                colors={{ scheme: 'category10' }}
                 borderWidth={1}
-                borderColor={{
-                  from: 'color',
-                  modifiers: [['darker', 0.2]]
-                }}
-                enableArcLinkLabels={true}
-                arcLinkLabelsSkipAngle={10}
-                arcLinkLabelsTextColor="#777777"
-                arcLinkLabelsThickness={2}
-                arcLinkLabelsColor={{ from: 'color' }}
+                borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+                enableArcLinkLabels={false}
                 arcLabelsSkipAngle={10}
-                arcLabelsTextColor="#ffffff"
+                arcLabelsTextColor="white"
                 tooltip={({ datum }) => (
-                  <div className="bg-white dark:bg-zinc-950 p-2 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800">
-                    <strong>{datum.id}</strong>: R$ {formatarNumero(datum.value)}
+                  <div className="bg-background p-2 rounded-lg border">
+                    <strong>{datum.label}:</strong> {formatarMoeda(datum.value)}
                   </div>
                 )}
-                theme={{
-                  labels: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                  legends: {
-                    text: {
-                      fontSize: 12,
-                      fill: "#777777",
-                    },
-                  },
-                }}
               />
-            </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Nenhuma despesa registrada
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
-  );
+  )
 }
