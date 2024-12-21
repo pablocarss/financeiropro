@@ -7,25 +7,25 @@ import { useApp } from "@/contexts/AppContext";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Plus, Pencil, Trash } from "lucide-react";
 
-interface NovaFormaPagamentoModalProps {
+interface NovoTipoDocumentoModalProps {
   open: boolean;
   onClose: () => void;
-  formaParaEditar?: {
+  tipoParaEditar?: {
     id: number;
     nome: string;
   };
 }
 
-function NovaFormaPagamentoModal({ open, onClose, formaParaEditar }: NovaFormaPagamentoModalProps) {
-  const { adicionarFormaPagamento, editarFormaPagamento } = useApp();
-  const [nome, setNome] = useState(formaParaEditar?.nome || '');
+function NovoTipoDocumentoModal({ open, onClose, tipoParaEditar }: NovoTipoDocumentoModalProps) {
+  const { adicionarTipoDocumento, editarTipoDocumento } = useApp();
+  const [nome, setNome] = useState(tipoParaEditar?.nome || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formaParaEditar) {
-      editarFormaPagamento(formaParaEditar.id, { nome });
+    if (tipoParaEditar) {
+      editarTipoDocumento(tipoParaEditar.id, { nome });
     } else {
-      adicionarFormaPagamento({ nome });
+      adicionarTipoDocumento({ nome });
     }
     onClose();
   };
@@ -36,7 +36,7 @@ function NovaFormaPagamentoModal({ open, onClose, formaParaEditar }: NovaFormaPa
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
           <Dialog.Title className="text-lg font-bold mb-4">
-            {formaParaEditar ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}
+            {tipoParaEditar ? 'Editar Tipo de Documento' : 'Novo Tipo de Documento'}
           </Dialog.Title>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,13 +45,13 @@ function NovaFormaPagamentoModal({ open, onClose, formaParaEditar }: NovaFormaPa
               <Input
                 value={nome}
                 onChange={e => setNome(e.target.value)}
-                placeholder="Nome da forma de pagamento"
+                placeholder="Nome do tipo de documento"
                 required
               />
             </div>
 
             <Button type="submit" className="w-full">
-              {formaParaEditar ? 'Salvar Alterações' : 'Criar Forma de Pagamento'}
+              {tipoParaEditar ? 'Salvar Alterações' : 'Criar Tipo de Documento'}
             </Button>
           </form>
         </Dialog.Content>
@@ -60,55 +60,53 @@ function NovaFormaPagamentoModal({ open, onClose, formaParaEditar }: NovaFormaPa
   );
 }
 
-export default function FormasPagamento() {
-  const { formasPagamento, removerFormaPagamento } = useApp();
+export default function TiposDocumento() {
+  const { tiposDocumento, removerTipoDocumento } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formaParaEditar, setFormaParaEditar] = useState<{
+  const [tipoParaEditar, setTipoParaEditar] = useState<{
     id: number;
     nome: string;
   } | undefined>();
 
-  const handleEditar = (forma: typeof formaParaEditar) => {
-    setFormaParaEditar(forma);
+  const handleEditar = (tipo: typeof tipoParaEditar) => {
+    setTipoParaEditar(tipo);
     setIsModalOpen(true);
   };
 
   const handleFecharModal = () => {
     setIsModalOpen(false);
-    setFormaParaEditar(undefined);
+    setTipoParaEditar(undefined);
   };
 
   return (
-    <div className="space-y-4 p-4 bg-zinc-950 min-h-screen">
+    <div className="space-y-4 p-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-zinc-100">Formas de Pagamento</h1>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+        <h1 className="text-2xl font-bold">Tipos de Documento</h1>
+        <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Nova Forma de Pagamento
+          Novo Tipo de Documento
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {formasPagamento.map(forma => (
-          <Card key={forma.id} className="p-4 bg-zinc-900 border-zinc-800">
+        {tiposDocumento.map(tipo => (
+          <Card key={tipo.id} className="p-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-zinc-100">{forma.nome}</h3>
+              <h3 className="font-medium">{tipo.nome}</h3>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleEditar(forma)}
-                  className="hover:bg-zinc-800"
+                  onClick={() => handleEditar(tipo)}
                 >
-                  <Pencil className="w-4 h-4 text-zinc-400" />
+                  <Pencil className="w-4 h-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => removerFormaPagamento(forma.id)}
-                  className="hover:bg-zinc-800"
+                  onClick={() => removerTipoDocumento(tipo.id)}
                 >
-                  <Trash className="w-4 h-4 text-zinc-400" />
+                  <Trash className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -116,10 +114,10 @@ export default function FormasPagamento() {
         ))}
       </div>
 
-      <NovaFormaPagamentoModal
+      <NovoTipoDocumentoModal
         open={isModalOpen}
         onClose={handleFecharModal}
-        formaParaEditar={formaParaEditar}
+        tipoParaEditar={tipoParaEditar}
       />
     </div>
   );

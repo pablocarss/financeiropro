@@ -1,23 +1,29 @@
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Receipt,
-  Tags,
-  Wallet,
+  BarChart3,
+  Building2,
   CreditCard,
+  FileCheck,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  LayoutDashboard,
+  ListTodo,
+  Tags,
   Users,
 } from "lucide-react";
 
 const menuItems = [
   {
     path: "/",
-    label: "Painel",
+    label: "Dashboard",
     icon: LayoutDashboard,
   },
   {
     path: "/lancamentos",
     label: "Lançamentos",
-    icon: Receipt,
+    icon: ListTodo,
   },
   {
     path: "/categorias",
@@ -27,7 +33,7 @@ const menuItems = [
   {
     path: "/contas-bancarias",
     label: "Contas Bancárias",
-    icon: Wallet,
+    icon: Building2,
   },
   {
     path: "/formas-pagamento",
@@ -39,34 +45,51 @@ const menuItems = [
     label: "Clientes",
     icon: Users,
   },
+  {
+    path: "/centros-custo",
+    label: "Centros de Custo",
+    icon: BarChart3,
+  },
+  {
+    path: "/tipos-documento",
+    label: "Tipos de Documento",
+    icon: FileSpreadsheet,
+  },
+  {
+    path: "/importar-lancamentos",
+    label: "Importar Lançamentos",
+    icon: FileDown,
+  },
+  {
+    path: "/conciliacao-bancaria",
+    label: "Conciliação Bancária",
+    icon: FileCheck,
+  },
 ];
 
 export function Sidebar() {
+  const { pathname } = useLocation();
+
   return (
-    <aside className="w-64 gradient-sidebar flex flex-col">
-      <div className="p-6 flex items-center gap-2">
-        <img src="/logo.svg" alt="" className="w-8 h-8" />
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
-          FinanceiroPro
-        </h1>
-      </div>
-      <nav className="mt-6 flex-1">
+    <aside className="w-72 border-r border-zinc-800 bg-zinc-900 p-6">
+      <Link to="/" className="flex items-center gap-2 mb-8">
+        <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
+        <span className="font-bold text-xl text-zinc-100">FINANCEIRO PRO+</span>
+      </Link>
+
+      <nav className="space-y-0.5">
         {menuItems.map((item) => (
-          <NavLink
+          <Link
             key={item.path}
             to={item.path}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all duration-300 ${
-                isActive
-                  ? "bg-purple-500/10 text-purple-400 border-r-4 border-purple-500 font-semibold"
-                  : "text-muted-foreground hover:text-purple-400 hover:bg-purple-500/5"
-              }`
-            }
-            end
+            className={cn(
+              "flex items-center gap-3 rounded px-3 py-2 hover:bg-zinc-800",
+              pathname === item.path && "bg-zinc-800"
+            )}
           >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
+            <item.icon className="w-5 h-5 text-zinc-500" />
+            <span className="font-medium text-zinc-100">{item.label}</span>
+          </Link>
         ))}
       </nav>
     </aside>

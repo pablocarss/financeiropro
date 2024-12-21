@@ -1,339 +1,271 @@
-import { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NovoLancamentoModal } from "@/components/lancamentos/NovoLancamentoModal";
-import { Plus, ArrowUpCircle, ArrowDownCircle, Filter } from "lucide-react";
+import { useApp } from "@/contexts/AppContext";
+import { Plus, Filter } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-interface Lancamento {
-  id: number;
-  descricao: string;
-  valor: number;
-  tipo: "entrada" | "saida";
-  data: string;
-  vencimento: string;
-  competencia: string;
-  categoria: string;
-  contaBancaria: string;
-  formaPagamento: string;
-  status: "pago" | "a_pagar" | "recebido" | "a_receber";
-  numeroDocumento?: string;
-  comprovante?: File;
-}
-
-interface FiltroModalProps {
-  open: boolean;
-  onClose: () => void;
-  onFilter: (filtros: any) => void;
-}
-
-function FiltroModal({ open, onClose, onFilter }: FiltroModalProps) {
-  const [filtros, setFiltros] = useState({
-    dataInicial: "",
-    dataFinal: "",
-    tipo: "",
-    categoria: "",
-    contaBancaria: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onFilter(filtros);
-    onClose();
-  };
-
-  if (!open) return null;
-
-  return (
-    <Dialog.Root open={open} onOpenChange={onClose}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-8 bg-zinc-950 rounded-2xl border border-zinc-800 w-full max-w-md shadow-xl">
-          <div className="flex flex-col gap-6">
-            <header className="flex items-center justify-between">
-              <Dialog.Title className="text-2xl font-bold text-zinc-100">
-                Filtrar Lançamentos
-              </Dialog.Title>
-              <Dialog.Close className="text-zinc-400 hover:text-zinc-100">
-                <X className="size-6" />
-              </Dialog.Close>
-            </header>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Data Inicial</Label>
-                    <Input
-                      type="date"
-                      value={filtros.dataInicial}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, dataInicial: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Data Final</Label>
-                    <Input
-                      type="date"
-                      value={filtros.dataFinal}
-                      onChange={(e) =>
-                        setFiltros({ ...filtros, dataFinal: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Tipo</Label>
-                  <select
-                    className="w-full h-10 px-3 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-100"
-                    value={filtros.tipo}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, tipo: e.target.value })
-                    }
-                  >
-                    <option value="">Todos</option>
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label>Categoria</Label>
-                  <Input
-                    value={filtros.categoria}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, categoria: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label>Conta Bancária</Label>
-                  <Input
-                    value={filtros.contaBancaria}
-                    onChange={(e) =>
-                      setFiltros({ ...filtros, contaBancaria: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="h-12 bg-purple-600 text-white font-medium hover:bg-purple-700"
-              >
-                Aplicar Filtros
-              </Button>
-            </form>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Lancamentos() {
+  const { lancamentos, categorias, contasBancarias, formasPagamento } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isFiltroOpen, setIsFiltroOpen] = useState(false);
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [filtros, setFiltros] = useState({});
+  const [filtroAberto, setFiltroAberto] = useState(false);
+  const [filtros, setFiltros] = useState({
+    tipo: '',
+    categoria: '',
+    contaBancaria: '',
+    formaPagamento: '',
+    status: '',
+    dataInicial: '',
+    dataFinal: ''
+  });
 
-  const [categorias, setCategorias] = useState([
-    { id: 1, nome: "Vendas", tipo: "entrada" },
-    { id: 2, nome: "Serviços", tipo: "entrada" },
-    { id: 3, nome: "Aluguel", tipo: "saida" },
-    { id: 4, nome: "Fornecedores", tipo: "saida" },
-  ]);
+  const [lancamentosFiltrados, setLancamentosFiltrados] = useState(lancamentos);
 
-  const [contasBancarias, setContasBancarias] = useState([
-    { id: 1, nome: "Conta Principal" },
-    { id: 2, nome: "Conta Poupança" },
-  ]);
+  useEffect(() => {
+    aplicarFiltros();
+  }, [lancamentos, filtros]);
 
-  const [formasPagamento, setFormasPagamento] = useState([
-    { id: 1, nome: "Dinheiro" },
-    { id: 2, nome: "Cartão de Crédito" },
-    { id: 3, nome: "Cartão de Débito" },
-    { id: 4, nome: "PIX" },
-  ]);
+  const aplicarFiltros = () => {
+    let resultado = [...lancamentos];
 
-  const handleAddLancamento = (novoLancamento: Omit<Lancamento, "id">) => {
-    setLancamentos((prev) => [
-      ...prev,
-      { ...novoLancamento, id: Math.random() },
-    ]);
-    setIsModalOpen(false);
+    if (filtros.tipo) {
+      resultado = resultado.filter(l => l.tipo === filtros.tipo);
+    }
+    if (filtros.categoria) {
+      resultado = resultado.filter(l => l.categoria === Number(filtros.categoria));
+    }
+    if (filtros.contaBancaria) {
+      resultado = resultado.filter(l => l.contaBancaria === Number(filtros.contaBancaria));
+    }
+    if (filtros.formaPagamento) {
+      resultado = resultado.filter(l => l.formaPagamento === Number(filtros.formaPagamento));
+    }
+    if (filtros.status) {
+      resultado = resultado.filter(l => l.status === filtros.status);
+    }
+    if (filtros.dataInicial) {
+      resultado = resultado.filter(l => new Date(l.data) >= new Date(filtros.dataInicial));
+    }
+    if (filtros.dataFinal) {
+      resultado = resultado.filter(l => new Date(l.data) <= new Date(filtros.dataFinal));
+    }
+
+    setLancamentosFiltrados(resultado);
   };
 
-  const handleFilter = (novosFiltros: any) => {
-    setFiltros(novosFiltros);
-    // Aqui você pode implementar a lógica de filtro
+  const limparFiltros = () => {
+    setFiltros({
+      tipo: '',
+      categoria: '',
+      contaBancaria: '',
+      formaPagamento: '',
+      status: '',
+      dataInicial: '',
+      dataFinal: ''
+    });
   };
-
-  // Calcular totais
-  const totais = lancamentos.reduce(
-    (acc, lancamento) => {
-      if (lancamento.tipo === "entrada") {
-        acc.entradas += Number(lancamento.valor);
-      } else {
-        acc.saidas += Number(lancamento.valor);
-      }
-      return acc;
-    },
-    { entradas: 0, saidas: 0 }
-  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 p-4 bg-zinc-950 min-h-screen">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Lançamentos</h1>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setIsFiltroOpen(true)}>
+        <h1 className="text-2xl font-bold text-zinc-100">Lançamentos</h1>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setFiltroAberto(true)}
+            className="bg-zinc-900 border-zinc-800 text-zinc-100 hover:bg-zinc-800"
+          >
             <Filter className="w-4 h-4 mr-2" />
-            Filtrar
+            Filtros
           </Button>
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button onClick={() => setIsModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
             <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
           </Button>
         </div>
       </div>
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <ArrowUpCircle className="w-8 h-8 text-emerald-500" />
-            <div>
-              <p className="text-sm text-zinc-500">Entradas</p>
-              <p className="text-2xl font-bold text-emerald-500">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(totais.entradas)}
-              </p>
-            </div>
-          </div>
-        </Card>
+      <Dialog.Root open={filtroAberto} onOpenChange={setFiltroAberto}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+            <Dialog.Title className="text-lg font-bold mb-4 text-zinc-100">Filtros</Dialog.Title>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="text-zinc-300">Tipo</Label>
+                <Select value={filtros.tipo} onValueChange={value => setFiltros(prev => ({ ...prev, tipo: value }))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="entrada">Entrada</SelectItem>
+                    <SelectItem value="saida">Saída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <ArrowDownCircle className="w-8 h-8 text-red-500" />
-            <div>
-              <p className="text-sm text-zinc-500">Saídas</p>
-              <p className="text-2xl font-bold text-red-500">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(totais.saidas)}
-              </p>
-            </div>
-          </div>
-        </Card>
+              <div>
+                <Label className="text-zinc-300">Categoria</Label>
+                <Select value={filtros.categoria} onValueChange={value => setFiltros(prev => ({ ...prev, categoria: value }))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas</SelectItem>
+                    {categorias.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-              <span className="text-lg font-bold text-purple-600">=</span>
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500">Total</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(totais.entradas - totais.saidas)}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
+              <div>
+                <Label className="text-zinc-300">Conta Bancária</Label>
+                <Select value={filtros.contaBancaria} onValueChange={value => setFiltros(prev => ({ ...prev, contaBancaria: value }))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas</SelectItem>
+                    {contasBancarias.map(conta => (
+                      <SelectItem key={conta.id} value={conta.id.toString()}>
+                        {conta.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* Lista de lançamentos */}
-      <Card className="p-6">
-        {lancamentos.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-zinc-500">Nenhum lançamento registrado</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {lancamentos.map((lancamento) => (
-              <div
-                key={lancamento.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-zinc-50"
-              >
+              <div>
+                <Label className="text-zinc-300">Forma de Pagamento</Label>
+                <Select value={filtros.formaPagamento} onValueChange={value => setFiltros(prev => ({ ...prev, formaPagamento: value }))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas</SelectItem>
+                    {formasPagamento.map(forma => (
+                      <SelectItem key={forma.id} value={forma.id.toString()}>
+                        {forma.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-zinc-300">Status</Label>
+                <Select value={filtros.status} onValueChange={value => setFiltros(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                    <SelectItem value="a_pagar">A Pagar</SelectItem>
+                    <SelectItem value="recebido">Recebido</SelectItem>
+                    <SelectItem value="a_receber">A Receber</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-zinc-300">Data Inicial</Label>
+                <Input
+                  type="date"
+                  value={filtros.dataInicial}
+                  onChange={e => setFiltros(prev => ({ ...prev, dataInicial: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                />
+              </div>
+
+              <div>
+                <Label className="text-zinc-300">Data Final</Label>
+                <Input
+                  type="date"
+                  value={filtros.dataFinal}
+                  onChange={e => setFiltros(prev => ({ ...prev, dataFinal: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={limparFiltros} className="bg-zinc-800 border-zinc-700 text-zinc-100 hover:bg-zinc-700">
+                  Limpar
+                </Button>
+                <Button onClick={() => setFiltroAberto(false)} className="bg-purple-600 hover:bg-purple-700">
+                  Aplicar
+                </Button>
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <div className="grid gap-4">
+        {lancamentosFiltrados.map(lancamento => {
+          const categoria = categorias.find(c => c.id === lancamento.categoria);
+          const conta = contasBancarias.find(c => c.id === lancamento.contaBancaria);
+          const formaPagamento = formasPagamento.find(f => f.id === lancamento.formaPagamento);
+
+          return (
+            <Card key={lancamento.id} className="p-4 bg-zinc-900 border-zinc-800">
+              <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-medium">{lancamento.descricao}</p>
-                  <p className="text-sm text-zinc-500">
-                    {lancamento.categoria} • {lancamento.contaBancaria} • {lancamento.formaPagamento}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-zinc-500">
-                      Data: {new Date(lancamento.data).toLocaleDateString("pt-BR")}
-                    </span>
-                    <span className="text-xs text-zinc-500">
-                      Venc.: {new Date(lancamento.vencimento).toLocaleDateString("pt-BR")}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        lancamento.status === "pago" || lancamento.status === "recebido"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {lancamento.status === "pago"
-                        ? "Pago"
-                        : lancamento.status === "a_pagar"
-                        ? "A Pagar"
-                        : lancamento.status === "recebido"
-                        ? "Recebido"
-                        : "A Receber"}
-                    </span>
+                  <h3 className="font-medium text-zinc-100">{lancamento.descricao}</h3>
+                  <div className="space-y-1">
+                    <p className="text-sm text-zinc-400">
+                      {categoria?.nome} • {conta?.nome} • {formaPagamento?.nome}
+                    </p>
+                    <p className="text-sm text-zinc-400">
+                      {format(new Date(lancamento.data), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p
-                    className={`font-bold ${
-                      lancamento.tipo === "entrada"
-                        ? "text-emerald-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {lancamento.tipo === "entrada" ? "+" : "-"}
-                    {new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(Number(lancamento.valor))}
+                  <p className={`font-medium ${
+                    lancamento.tipo === 'entrada' ? 'text-emerald-500' : 'text-red-500'
+                  }`}>
+                    {lancamento.tipo === 'entrada' ? '+' : '-'}
+                    {lancamento.valor.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    })}
                   </p>
-                  {lancamento.numeroDocumento && (
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Doc: {lancamento.numeroDocumento}
-                    </p>
-                  )}
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    lancamento.status === 'pago' || lancamento.status === 'recebido'
+                      ? 'bg-emerald-500/10 text-emerald-500'
+                      : 'bg-yellow-500/10 text-yellow-500'
+                  }`}>
+                    {lancamento.status === 'pago' ? 'Pago'
+                      : lancamento.status === 'a_pagar' ? 'A Pagar'
+                      : lancamento.status === 'recebido' ? 'Recebido'
+                      : 'A Receber'}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            </Card>
+          );
+        })}
+      </div>
 
       <NovoLancamentoModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddLancamento}
-        categorias={categorias}
-        contasBancarias={contasBancarias}
-        formasPagamento={formasPagamento}
-      />
-
-      <FiltroModal
-        open={isFiltroOpen}
-        onClose={() => setIsFiltroOpen(false)}
-        onFilter={handleFilter}
+        onClose={() => {
+          setIsModalOpen(false);
+          // Força a atualização dos filtros ao fechar o modal
+          aplicarFiltros();
+        }}
       />
     </div>
   );

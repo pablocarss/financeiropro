@@ -1,108 +1,93 @@
-import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useApp } from "@/contexts/AppContext";
+import { useState } from "react";
 
 interface NovaCategoriaModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
 }
 
-export function NovaCategoriaModal({ open, onClose, onSubmit }: NovaCategoriaModalProps) {
-  const [formData, setFormData] = useState({
-    nome: "",
-    descricao: "",
-    tipo: "despesa" as "receita" | "despesa",
-  });
+export function NovaCategoriaModal({ open, onClose }: NovaCategoriaModalProps) {
+  const { adicionarCategoria } = useApp();
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState<"entrada" | "saida">("entrada");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    if (!nome.trim()) {
+      return;
+    }
+
+    adicionarCategoria({
+      id: Math.random(),
+      nome: nome.trim(),
+      tipo,
+    });
+
+    setNome("");
+    setTipo("entrada");
     onClose();
   };
-
-  if (!open) return null;
 
   return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-8 bg-zinc-950 rounded-2xl border border-zinc-800 w-full max-w-md shadow-xl">
-          <div className="flex flex-col gap-6">
-            <header className="flex items-center justify-between">
-              <Dialog.Title className="text-2xl font-bold text-zinc-100">
-                Nova Categoria
-              </Dialog.Title>
-              <Dialog.Close className="text-zinc-400 hover:text-zinc-100">
-                <X className="size-6" />
-              </Dialog.Close>
-            </header>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg w-full max-w-md bg-zinc-900 border border-zinc-800">
+          <Dialog.Title className="text-lg font-bold mb-4 text-zinc-100">
+            Nova Categoria
+          </Dialog.Title>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="nome">Nome</Label>
-                  <Input
-                    id="nome"
-                    value={formData.nome}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nome: e.target.value })
-                    }
-                    required
-                  />
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome" className="text-zinc-300">
+                Nome da categoria
+              </Label>
+              <Input
+                id="nome"
+                value={nome}
+                onChange={e => setNome(e.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="descricao">Descrição</Label>
-                  <Input
-                    id="descricao"
-                    value={formData.descricao}
-                    onChange={(e) =>
-                      setFormData({ ...formData, descricao: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label>Tipo</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, tipo: "receita" })}
-                      className={`h-10 ${
-                        formData.tipo === "receita"
-                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                      }`}
-                    >
-                      Receita
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, tipo: "despesa" })}
-                      className={`h-10 ${
-                        formData.tipo === "despesa"
-                          ? "bg-red-600 text-white hover:bg-red-700"
-                          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                      }`}
-                    >
-                      Despesa
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="h-12 bg-emerald-600 text-white font-medium hover:bg-emerald-700"
+            <div className="space-y-2">
+              <Label htmlFor="tipo" className="text-zinc-300">
+                Tipo
+              </Label>
+              <Select
+                value={tipo}
+                onValueChange={(value: "entrada" | "saida") => setTipo(value)}
               >
-                Cadastrar
+                <SelectTrigger id="tipo" className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="entrada">Receita</SelectItem>
+                  <SelectItem value="saida">Despesa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="bg-zinc-800 border-zinc-700 text-zinc-100 hover:bg-zinc-700"
+              >
+                Cancelar
               </Button>
-            </form>
-          </div>
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+                Criar Categoria
+              </Button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

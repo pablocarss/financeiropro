@@ -1,295 +1,309 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { CalendarIcon, Check, X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useApp } from "@/contexts/AppContext"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface NovoLancamentoModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (lancamento: any) => void;
-  categorias: Array<{ id: number; nome: string; tipo: string }>;
-  contasBancarias: Array<{ id: number; nome: string }>;
-  formasPagamento: Array<{ id: number; nome: string }>;
+  open: boolean
+  onClose: () => void
+  lancamentoParaEditar?: any
 }
 
-export function NovoLancamentoModal({ 
-  open, 
-  onClose, 
-  onSubmit,
-  categorias,
-  contasBancarias,
-  formasPagamento
-}: NovoLancamentoModalProps) {
-  const [tipo, setTipo] = useState<"entrada" | "saida">("entrada");
-  const [descricao, setDescricao] = useState("");
-  const [valor, setValor] = useState("");
-  const [data, setData] = useState<Date>(new Date());
-  const [vencimento, setVencimento] = useState<Date>(new Date());
-  const [competencia, setCompetencia] = useState<Date>(new Date());
-  const [categoria, setCategoria] = useState("");
-  const [contaBancaria, setContaBancaria] = useState("");
-  const [formaPagamento, setFormaPagamento] = useState("");
-  const [numeroDocumento, setNumeroDocumento] = useState("");
-  const [comprovante, setComprovante] = useState<File | null>(null);
+export function NovoLancamentoModal({ open, onClose, lancamentoParaEditar }: NovoLancamentoModalProps) {
+  const {
+    categorias,
+    contasBancarias,
+    formasPagamento,
+    centrosCusto,
+    tiposDocumento,
+    criarLancamento,
+    editarLancamento
+  } = useApp()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [selectedDate, setSelectedDate] = useState(lancamentoParaEditar?.data ? new Date(lancamentoParaEditar.data) : new Date())
+  const [descricao, setDescricao] = useState(lancamentoParaEditar?.descricao || "")
+  const [valor, setValor] = useState(lancamentoParaEditar?.valor?.toString() || "")
+  const [categoria, setCategoria] = useState(lancamentoParaEditar?.categoria?.toString() || "")
+  const [contaBancaria, setContaBancaria] = useState(lancamentoParaEditar?.contaBancaria?.toString() || "")
+  const [formaPagamento, setFormaPagamento] = useState(lancamentoParaEditar?.formaPagamento?.toString() || "")
+  const [centroCusto, setCentroCusto] = useState(lancamentoParaEditar?.centroCusto?.toString() || "")
+  const [tipoDocumento, setTipoDocumento] = useState(lancamentoParaEditar?.tipoDocumento?.toString() || "")
+  const [numeroDocumento, setNumeroDocumento] = useState(lancamentoParaEditar?.numeroDocumento || "")
+  const [observacoes, setObservacoes] = useState(lancamentoParaEditar?.observacoes || "")
+  const [anexos, setAnexos] = useState<File[]>(lancamentoParaEditar?.anexos || [])
+  const [recorrencia, setRecorrencia] = useState(lancamentoParaEditar?.recorrencia?.tipo || 'nao_repete')
+  const [recorrenciaEndDate, setRecorrenciaEndDate] = useState(lancamentoParaEditar?.recorrencia?.periodicidade ? new Date(lancamentoParaEditar.recorrencia.periodicidade) : null)
 
-    // Determina o status com base no tipo e nas datas
-    let status;
-    const hoje = new Date();
-    if (tipo === "entrada") {
-      status = data <= hoje ? "recebido" : "a_receber";
-    } else {
-      status = data <= hoje ? "pago" : "a_pagar";
+  useEffect(() => {
+    if (!open) {
+      // Reset form when modal is closed
+      setSelectedDate(new Date())
+      setDescricao("")
+      setValor("")
+      setCategoria("")
+      setContaBancaria("")
+      setFormaPagamento("")
+      setCentroCusto("")
+      setTipoDocumento("")
+      setNumeroDocumento("")
+      setObservacoes("")
+      setAnexos([])
+      setRecorrencia("none")
+      setRecorrenciaEndDate(null)
     }
+  }, [open])
 
-    onSubmit({
+  const handleSave = () => {
+    const lancamento = {
       descricao,
       valor: Number(valor),
-      tipo,
-      data: data.toISOString(),
-      vencimento: vencimento.toISOString(),
-      competencia: competencia.toISOString(),
-      categoria,
-      contaBancaria,
-      formaPagamento,
-      status,
+      data: selectedDate.toISOString(),
+      categoria: Number(categoria),
+      contaBancaria: Number(contaBancaria),
+      formaPagamento: Number(formaPagamento),
+      centroCusto: Number(centroCusto),
+      tipoDocumento: Number(tipoDocumento),
       numeroDocumento,
-      comprovante
-    });
+      observacoes,
+      anexos,
+      recorrencia: {
+        tipo: recorrencia,
+        periodicidade: recorrenciaEndDate?.toISOString() || null,
+      },
+    }
 
-    // Limpa o formulário
-    setDescricao("");
-    setValor("");
-    setTipo("entrada");
-    setData(new Date());
-    setVencimento(new Date());
-    setCompetencia(new Date());
-    setCategoria("");
-    setContaBancaria("");
-    setFormaPagamento("");
-    setNumeroDocumento("");
-    setComprovante(null);
-  };
+    if (lancamentoParaEditar) {
+      editarLancamento(lancamentoParaEditar.id, lancamento)
+    } else {
+      criarLancamento(lancamento)
+    }
 
-  const categoriasFiltradas = categorias.filter(cat => cat.tipo === tipo);
+    onClose()
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[425px]">
+      <DialogContent className="max-w-[600px] max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>Novo Lançamento</DialogTitle>
+          <DialogTitle>{lancamentoParaEditar ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={tipo === "entrada" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setTipo("entrada")}
-            >
-              Entrada
-            </Button>
-            <Button
-              type="button"
-              variant={tipo === "saida" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setTipo("saida")}
-            >
-              Saída
-            </Button>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição</Label>
-            <Input
-              id="descricao"
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              required
-            />
-          </div>
+        <ScrollArea className="h-[calc(80vh-120px)] pr-4">
+          <Tabs defaultValue="principal" className="w-full">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="principal">Principal</TabsTrigger>
+              <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+              <TabsTrigger value="recorrencia">Recorrência</TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-2">
-            <Label htmlFor="valor">Valor</Label>
-            <Input
-              id="valor"
-              type="number"
-              step="0.01"
-              min="0"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label>Data do Lançamento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !data && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {data ? format(data, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={data}
-                    onSelect={(date) => date && setData(date)}
-                    initialFocus
-                    locale={ptBR}
+            <TabsContent value="principal" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <div className="flex items-center">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      type="button"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(selectedDate, "PPP", { locale: ptBR })}
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Valor</Label>
+                  <Input
+                    type="number"
+                    value={valor}
+                    onChange={(e) => setValor(e.target.value)}
+                    placeholder="0,00"
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Data de Vencimento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !vencimento && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {vencimento ? format(vencimento, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={vencimento}
-                    onSelect={(date) => date && setVencimento(date)}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="Descrição do lançamento"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Competência</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !competencia && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {competencia ? format(competencia, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={competencia}
-                    onSelect={(date) => date && setCompetencia(date)}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categorias.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select value={categoria} onValueChange={setCategoria} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoriasFiltradas.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.nome}>
-                    {cat.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <div className="space-y-2">
+                  <Label>Conta</Label>
+                  <Select value={contaBancaria} onValueChange={setContaBancaria}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contasBancarias.map((conta) => (
+                        <SelectItem key={conta.id} value={conta.id.toString()}>
+                          {conta.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Conta Bancária</Label>
-            <Select value={contaBancaria} onValueChange={setContaBancaria} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma conta" />
-              </SelectTrigger>
-              <SelectContent>
-                {contasBancarias.map((conta) => (
-                  <SelectItem key={conta.id} value={conta.nome}>
-                    {conta.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <TabsContent value="detalhes" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  placeholder="Observações adicionais"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label>Forma de Pagamento</Label>
-            <Select value={formaPagamento} onValueChange={setFormaPagamento} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma forma de pagamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {formasPagamento.map((forma) => (
-                  <SelectItem key={forma.id} value={forma.nome}>
-                    {forma.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label>Anexos</Label>
+                <div className="border rounded-md p-4">
+                  <input type="file" multiple onChange={(e) => {
+                    if (e.target.files) {
+                      setAnexos(Array.from(e.target.files))
+                    }
+                  }} />
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="numeroDocumento">Número do Documento</Label>
-            <Input
-              id="numeroDocumento"
-              value={numeroDocumento}
-              onChange={(e) => setNumeroDocumento(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label>Forma de Pagamento</Label>
+                <Select value={formaPagamento} onValueChange={setFormaPagamento}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a forma de pagamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formasPagamento.map((forma) => (
+                      <SelectItem key={forma.id} value={forma.id.toString()}>
+                        {forma.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="comprovante">Comprovante</Label>
-            <Input
-              id="comprovante"
-              type="file"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setComprovante(file);
-              }}
-              accept="image/*,.pdf"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label>Centro de Custo</Label>
+                <Select value={centroCusto} onValueChange={setCentroCusto}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o centro de custo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {centrosCusto.map((centro) => (
+                      <SelectItem key={centro.id} value={centro.id.toString()}>
+                        {centro.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <Button type="submit" className="w-full">
-            Criar Lançamento
+              <div className="space-y-2">
+                <Label>Tipo de Documento</Label>
+                <Select value={tipoDocumento} onValueChange={setTipoDocumento}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de documento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposDocumento.map((tipo) => (
+                      <SelectItem key={tipo.id} value={tipo.id.toString()}>
+                        {tipo.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Número do Documento</Label>
+                <Input
+                  value={numeroDocumento}
+                  onChange={(e) => setNumeroDocumento(e.target.value)}
+                  placeholder="Digite o número do documento"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="recorrencia" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Tipo de Recorrência</Label>
+                <Select value={recorrencia} onValueChange={setRecorrencia}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de recorrência" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_repete">Não Repete</SelectItem>
+                    <SelectItem value="diaria">Diária</SelectItem>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {recorrencia !== "nao_repete" && (
+                <div className="space-y-2">
+                  <Label>Data Final da Recorrência</Label>
+                  <div className="flex items-center">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      type="button"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {recorrenciaEndDate
+                        ? format(recorrenciaEndDate, "PPP", { locale: ptBR })
+                        : "Selecione a data final"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </ScrollArea>
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={onClose}>
+            <X className="mr-2 h-4 w-4" />
+            Cancelar
           </Button>
-        </form>
+          <Button onClick={handleSave}>
+            <Check className="mr-2 h-4 w-4" />
+            {lancamentoParaEditar ? 'Salvar Alterações' : 'Criar Lançamento'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
