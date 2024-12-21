@@ -1,5 +1,5 @@
 import { Sidebar } from "./Sidebar";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "../ui/button";
 

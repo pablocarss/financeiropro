@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
 
-export function Painel() {
+export default function Painel() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

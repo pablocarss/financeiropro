@@ -2,12 +2,12 @@ import { BrowserRouter } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Routes, Route } from "react-router-dom";
-import { Painel } from "./pages/Painel";
-import { Lancamentos } from "./pages/Lancamentos";
-import { Categorias } from "./pages/Categorias";
-import { ContasBancarias } from "./pages/ContasBancarias";
-import { FormasPagamento } from "./pages/FormasPagamento";
-import { Clientes } from "./pages/Clientes";
+import Painel from "./pages/Painel";
+import Lancamentos from "./pages/Lancamentos";
+import Categorias from "./pages/Categorias";
+import ContasBancarias from "./pages/ContasBancarias";
+import FormasPagamento from "./pages/FormasPagamento";
+import Clientes from "./pages/Clientes";
 
 export default function App() {
   return (
