@@ -1,12 +1,11 @@
-import { Layout } from "@/components/layout/Layout";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { NovoLancamentoModal } from "@/components/lancamentos/NovoLancamentoModal";
+import { Plus, ArrowUpCircle, ArrowDownCircle, Filter } from "lucide-react";
 
-// Tipo para os lançamentos
 interface Lancamento {
-  id: string;
+  id: number;
   descricao: string;
   valor: number;
   tipo: "entrada" | "saida";
@@ -17,75 +16,160 @@ interface Lancamento {
 }
 
 export default function Lancamentos() {
-  const [modalAberto, setModalAberto] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
 
-  const adicionarLancamento = (novoLancamento: Omit<Lancamento, "id">) => {
-    const lancamento = {
-      ...novoLancamento,
-      id: crypto.randomUUID(),
-    };
-    setLancamentos([...lancamentos, lancamento]);
-    setModalAberto(false);
+  const handleAddLancamento = (novoLancamento: Omit<Lancamento, "id">) => {
+    setLancamentos((prev) => [
+      ...prev,
+      { ...novoLancamento, id: Math.random() },
+    ]);
+    setIsModalOpen(false);
   };
 
+  // Calcular totais
+  const totais = lancamentos.reduce(
+    (acc, lancamento) => {
+      if (lancamento.tipo === "entrada") {
+        acc.entradas += lancamento.valor;
+      } else {
+        acc.saidas += lancamento.valor;
+      }
+      return acc;
+    },
+    { entradas: 0, saidas: 0 }
+  );
+
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Lançamentos</h1>
-          <Button
-            onClick={() => setModalAberto(true)}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Lançamentos</h1>
+        <div className="flex gap-3">
+          <Button variant="outline" size="sm">
+            <Filter className="w-4 h-4 mr-2" />
+            Filtrar
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
             Novo Lançamento
           </Button>
         </div>
-
-        {lancamentos.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-white/60">Nenhum lançamento registrado</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {lancamentos.map((lancamento) => (
-              <div
-                key={lancamento.id}
-                className="gradient-card p-4 rounded-lg flex items-center justify-between"
-              >
-                <div>
-                  <h3 className="font-medium text-white">{lancamento.descricao}</h3>
-                  <p className="text-sm text-white/60">
-                    {new Date(lancamento.data).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p
-                    className={`font-bold ${
-                      lancamento.tipo === "entrada"
-                        ? "text-emerald-400"
-                        : "text-rose-400"
-                    }`}
-                  >
-                    {lancamento.tipo === "entrada" ? "+" : "-"} R${" "}
-                    {lancamento.valor.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </p>
-                  <p className="text-sm text-white/60">{lancamento.categoria}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="gradient-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total de Entradas</p>
+              <h2 className="text-2xl font-bold text-green-500">
+                {totais.entradas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </h2>
+            </div>
+            <ArrowUpCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </Card>
+
+        <Card className="gradient-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total de Saídas</p>
+              <h2 className="text-2xl font-bold text-red-500">
+                {totais.saidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </h2>
+            </div>
+            <ArrowDownCircle className="w-8 h-8 text-red-500" />
+          </div>
+        </Card>
+
+        <Card className="gradient-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Saldo</p>
+              <h2 className={`text-2xl font-bold ${
+                totais.entradas - totais.saidas >= 0 ? "text-green-500" : "text-red-500"
+              }`}>
+                {(totais.entradas - totais.saidas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </h2>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              totais.entradas - totais.saidas >= 0 ? "bg-green-500/10" : "bg-red-500/10"
+            }`}>
+              {totais.entradas - totais.saidas >= 0 ? (
+                <ArrowUpCircle className="w-6 h-6 text-green-500" />
+              ) : (
+                <ArrowDownCircle className="w-6 h-6 text-red-500" />
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="gradient-card">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Histórico de Lançamentos</h3>
+          {lancamentos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum lançamento registrado ainda.
+              <br />
+              <Button
+                variant="link"
+                onClick={() => setIsModalOpen(true)}
+                className="mt-2"
+              >
+                Criar primeiro lançamento
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {lancamentos.map((lancamento) => (
+                <div
+                  key={lancamento.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-background/50 backdrop-blur-sm border border-purple-500/10 hover:border-purple-500/20 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-full ${
+                      lancamento.tipo === "entrada"
+                        ? "bg-green-500/10"
+                        : "bg-red-500/10"
+                    }`}>
+                      {lancamento.tipo === "entrada" ? (
+                        <ArrowUpCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <ArrowDownCircle className="w-5 h-5 text-red-500" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">{lancamento.descricao}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {lancamento.categoria} • {lancamento.formaPagamento}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-medium ${
+                      lancamento.tipo === "entrada"
+                        ? "text-green-500"
+                        : "text-red-500"
+                    }`}>
+                      {lancamento.tipo === "entrada" ? "+" : "-"}
+                      {lancamento.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(lancamento.data).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
       <NovoLancamentoModal
-        aberto={modalAberto}
-        onClose={() => setModalAberto(false)}
-        onSave={adicionarLancamento}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onSubmit={handleAddLancamento}
       />
-    </Layout>
+    </div>
   );
 }

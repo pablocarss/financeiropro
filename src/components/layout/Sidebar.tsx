@@ -43,22 +43,26 @@ const menuItems = [
 
 export function Sidebar() {
   return (
-    <aside className="w-64 bg-gradient-to-b from-purple-900 to-black border-r border-white/10">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-white">FinanceiroPro</h1>
+    <aside className="w-64 gradient-sidebar flex flex-col">
+      <div className="p-6 flex items-center gap-2">
+        <img src="/logo.svg" alt="" className="w-8 h-8" />
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+          FinanceiroPro
+        </h1>
       </div>
-      <nav className="mt-6">
+      <nav className="mt-6 flex-1">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all duration-300 ${
                 isActive
-                  ? "bg-white/10 text-white border-r-4 border-purple-500"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  ? "bg-purple-500/10 text-purple-400 border-r-4 border-purple-500 font-semibold"
+                  : "text-muted-foreground hover:text-purple-400 hover:bg-purple-500/5"
               }`
             }
+            end
           >
             <item.icon className="h-5 w-5" />
             {item.label}

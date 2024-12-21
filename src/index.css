@@ -28,12 +28,36 @@
     --radius: 0.75rem;
   }
 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 267 100% 67%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 267 56% 45%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 267 56% 45%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 267 100% 67%;
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-gradient-to-br from-purple-900 via-gray-900 to-black min-h-screen text-foreground font-inter;
+    @apply bg-background text-foreground font-inter transition-colors duration-300;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -43,6 +67,21 @@
 
 @layer utilities {
   .gradient-card {
-    @apply bg-gradient-to-br from-purple-900/40 to-black/40 backdrop-blur-sm border border-purple-500/20 shadow-xl shadow-purple-900/10;
+    @apply dark:bg-gradient-to-br dark:from-purple-900/40 dark:to-black/40 
+           bg-gradient-to-br from-white to-purple-50
+           backdrop-blur-sm border border-purple-500/20 
+           shadow-xl shadow-purple-900/10
+           transition-all duration-300 hover:shadow-purple-500/20 hover:scale-[1.02];
+  }
+
+  .gradient-sidebar {
+    @apply dark:bg-gradient-to-b dark:from-purple-900 dark:to-black
+           bg-gradient-to-b from-white to-purple-50
+           border-r border-purple-500/20;
+  }
+
+  .gradient-background {
+    @apply dark:bg-gradient-to-br dark:from-purple-900 dark:via-gray-900 dark:to-black
+           bg-gradient-to-br from-purple-50 via-white to-purple-100;
   }
 }
