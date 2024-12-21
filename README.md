@@ -41,4 +41,4 @@ npm run dev
 
 ## Licença
 
-MIT © Pablo Carvalho
+MIT © Pablo Cardoso
