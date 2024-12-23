@@ -89,6 +89,7 @@ export default function Layout({ children }: LayoutProps) {
           <main className="flex-1 p-6">
             {children}
           </main>
+
           <footer className="border-t p-4">
             <div className="container flex justify-between items-center text-sm text-muted-foreground">
               <div className="flex items-center gap-2">

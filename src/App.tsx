@@ -1,6 +1,6 @@
 import { ThemeProvider } from "./contexts/ThemeContext"
 import { AppProvider } from "./contexts/AppContext"
-import { AuthProvider } from "./contexts/AuthContext"
+import { AuthProvider, useAuth } from "./contexts/AuthContext"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Layout from "./components/layout/Layout"
 import Dashboard from "./pages/Dashboard"
@@ -15,20 +15,24 @@ import CentrosCusto from "./pages/CentrosCusto"
 import TiposDocumento from "./pages/TiposDocumento"
 import ImportarLancamentos from "./pages/ImportarLancamentos"
 import ConciliacaoBancaria from "./pages/ConciliacaoBancaria"
+import CartoesCredito from "./pages/CartoesCredito"
 import Landing from "./pages/Landing"
 import Login from "./pages/Login"
 import Registro from "./pages/Registro"
 import Perfil from "./pages/Perfil"
-import { useAuth } from "./contexts/AuthContext"
-import { Loading } from "./components/ui/loading"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Toaster } from "@/components/ui/toast"
+import Relatorios from "./pages/Relatorios"
+import { TooltipProvider } from "./components/ui/tooltip"
+import { Toaster } from "./components/ui/toaster"
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
+interface PrivateRouteProps {
+  children: React.ReactNode
+}
+
+function PrivateRoute({ children }: PrivateRouteProps) {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <Loading />
+    return <div>Carregando...</div>
   }
 
   if (!user) {
@@ -38,11 +42,15 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+interface PublicRouteProps {
+  children: React.ReactNode
+}
+
+function PublicRoute({ children }: PublicRouteProps) {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <Loading />
+    return <div>Carregando...</div>
   }
 
   if (user) {
@@ -55,10 +63,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <AppProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider>
+            <TooltipProvider>
               <Routes>
                 {/* Rotas públicas */}
                 <Route path="/" element={<Landing />} />
@@ -201,6 +209,26 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/cartoes-credito"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <CartoesCredito />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/cartoes"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <CartoesCredito />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
                   path="/perfil"
                   element={
                     <PrivateRoute>
@@ -210,12 +238,32 @@ export default function App() {
                     </PrivateRoute>
                   }
                 />
+                <Route
+                  path="/relatorios"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <Relatorios />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/clientes"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <Clientes />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
               </Routes>
               <Toaster />
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </AppProvider>
+            </TooltipProvider>
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
     </ThemeProvider>
   )
 }

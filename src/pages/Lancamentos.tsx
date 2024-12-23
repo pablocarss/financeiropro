@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale"
 import { useToast } from "@/components/ui/use-toast"
 import { Card } from "@/components/ui/card";
 import { NovoLancamentoModal } from "@/components/lancamentos/NovoLancamentoModal";
+import { LancamentoCard } from "@/components/lancamentos/LancamentoCard";
 
 export default function Lancamentos() {
   const { lancamentos, categorias, contasBancarias, formasPagamento, adicionarLancamento } = useApp();
@@ -432,43 +433,28 @@ export default function Lancamentos() {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {lancamentosFiltrados.map(lancamento => {
-          const categoria = categorias.find(c => c.id === lancamento.categoria);
-          const conta = contasBancarias.find(c => c.id === lancamento.contaBancaria);
-          const formaPagamento = formasPagamento.find(f => f.id === lancamento.formaPagamento);
-
-          return (
-            <div
-              key={lancamento.id}
-              className="flex items-center justify-between p-4 rounded-lg border"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Receipt className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-medium">{lancamento.descricao}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {categoria?.nome} • {conta?.nome} • {formaPagamento?.nome} • {format(new Date(lancamento.data), "dd/MM/yyyy")}
-                  </p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {lancamento.tipo === 'entrada' ? 
-                      (lancamento.status === 'receber' ? 'A Receber' : 'Recebido') :
-                      (lancamento.status === 'pagar' ? 'A Pagar' : 'Pago')
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className={`text-right ${lancamento.tipo === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
-                <p className="font-medium">
-                  {lancamento.tipo === 'entrada' ? '+' : '-'} {formatarMoeda(lancamento.valor)}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {lancamentosFiltrados.map((lancamento) => (
+          <LancamentoCard
+            key={lancamento.id}
+            lancamento={lancamento}
+            onDelete={(id) => {
+              // Implementar função de deletar
+              console.log('Deletar lançamento:', id);
+            }}
+            onEdit={(id, dados) => {
+              // Implementar função de editar
+              console.log('Editar lançamento:', id, dados);
+            }}
+          />
+        ))}
       </div>
+
+      {lancamentosFiltrados.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Nenhum lançamento encontrado</p>
+        </div>
+      )}
       <NovoLancamentoModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
