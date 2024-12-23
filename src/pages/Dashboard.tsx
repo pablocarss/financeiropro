@@ -1,211 +1,117 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { HelpCircle } from "lucide-react"
-import { useApp } from "@/contexts/AppContext"
-import { useEffect, useState } from "react"
-import { Tooltip } from "@/components/ui/tooltip"
-import { ResponsivePie } from '@nivo/pie'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useApp } from "@/contexts/AppContext";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  DollarSignIcon,
+  CreditCardIcon,
+  TrendingUpIcon,
+  WalletIcon,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
-  const { lancamentos, categorias, contasBancarias } = useApp()
-  const [totais, setTotais] = useState({
-    saldoTotal: 0,
-    receitas: 0,
-    despesas: 0,
-    balanco: 0
-  })
-
-  const [dadosGraficoDespesas, setDadosGraficoDespesas] = useState([])
-  const [dadosGraficoReceitas, setDadosGraficoReceitas] = useState([])
-
-  useEffect(() => {
-    if (!lancamentos?.length) return
-
-    const calculoTotais = lancamentos.reduce((acc, lancamento) => {
-      const valor = Number(lancamento.valor) || 0
-      if (lancamento.tipo === 'entrada') {
-        acc.receitas += valor
-      } else {
-        acc.despesas += valor
-      }
-      return acc
-    }, {
-      receitas: 0,
-      despesas: 0
-    })
-
-    calculoTotais.balanco = calculoTotais.receitas - calculoTotais.despesas
-    setTotais(calculoTotais)
-
-    // Cálculo para os gráficos de pizza
-    const despesasPorCategoria = {}
-    const receitasPorCategoria = {}
-
-    lancamentos.forEach(lancamento => {
-      const categoria = categorias?.find(c => c.id === lancamento.categoria)?.nome || 'Sem categoria'
-      const valor = Number(lancamento.valor) || 0
-
-      if (lancamento.tipo === 'entrada') {
-        receitasPorCategoria[categoria] = (receitasPorCategoria[categoria] || 0) + valor
-      } else {
-        despesasPorCategoria[categoria] = (despesasPorCategoria[categoria] || 0) + valor
-      }
-    })
-
-    const formatarDadosGrafico = (dados) => {
-      return Object.entries(dados).map(([categoria, valor]) => ({
-        id: categoria,
-        label: categoria,
-        value: valor
-      }))
-    }
-
-    setDadosGraficoDespesas(formatarDadosGrafico(despesasPorCategoria))
-    setDadosGraficoReceitas(formatarDadosGrafico(receitasPorCategoria))
-
-  }, [lancamentos, categorias])
+  const { calcularTotais, calcularTendencias } = useApp();
+  const totais = calcularTotais();
+  const tendencias = calcularTendencias();
 
   const formatarMoeda = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(valor)
-  }
+    }).format(valor);
+  };
+
+  const formatarTendencia = (valor: number) => {
+    const sinal = valor >= 0 ? '+' : '';
+    return `${sinal}${valor.toFixed(1)}%`;
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
-            <Tooltip>
-              <Tooltip content="Saldo total considerando todas as transações">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              </Tooltip>
-            </Tooltip>
+            <DollarSignIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatarMoeda(totais.balanco)}</div>
+            <div className="text-2xl font-bold">{formatarMoeda(totais.saldoTotal)}</div>
+            <p className="text-xs text-muted-foreground">
+              {formatarTendencia(tendencias.saldo)} em relação ao mês anterior
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receitas</CardTitle>
-            <Tooltip>
-              <Tooltip content="Total de receitas">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              </Tooltip>
-            </Tooltip>
+            <ArrowUpIcon className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">
-              {formatarMoeda(totais.receitas)}
+              {formatarMoeda(totais.receitasMesAtual)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {formatarTendencia(tendencias.receitas)} em relação ao mês anterior
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-            <Tooltip>
-              <Tooltip content="Total de despesas">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              </Tooltip>
-            </Tooltip>
+            <ArrowDownIcon className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">
-              {formatarMoeda(totais.despesas)}
+              {formatarMoeda(totais.despesasMesAtual)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {formatarTendencia(tendencias.despesas)} em relação ao mês anterior
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balanço</CardTitle>
-            <Tooltip>
-              <Tooltip content="Diferença entre receitas e despesas">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              </Tooltip>
-            </Tooltip>
+            <CardTitle className="text-sm font-medium">Saldo do Mês</CardTitle>
+            <TrendingUpIcon className={`h-4 w-4 ${totais.saldoMesAtual >= 0 ? 'text-green-500' : 'text-red-500'}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${totais.balanco >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {formatarMoeda(totais.balanco)}
+            <div className={`text-2xl font-bold ${totais.saldoMesAtual >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {formatarMoeda(totais.saldoMesAtual)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {totais.saldoMesAtual >= 0 ? 'Lucro' : 'Prejuízo'} no mês atual
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Categorias de Receitas</CardTitle>
+            <CardTitle>Visão Geral</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            {dadosGraficoReceitas.length > 0 ? (
-              <ResponsivePie
-                data={dadosGraficoReceitas}
-                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                innerRadius={0.5}
-                padAngle={0.7}
-                cornerRadius={3}
-                activeOuterRadiusOffset={8}
-                colors={{ scheme: 'category10' }}
-                borderWidth={1}
-                borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-                enableArcLinkLabels={false}
-                arcLabelsSkipAngle={10}
-                arcLabelsTextColor="white"
-                tooltip={({ datum }) => (
-                  <div className="bg-background p-2 rounded-lg border">
-                    <strong>{datum.label}:</strong> {formatarMoeda(datum.value)}
-                  </div>
-                )}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Nenhuma receita registrada
-              </div>
-            )}
+          <CardContent>
+            <div className="h-[200px]">
+              {/* Adicionar gráfico aqui */}
+            </div>
           </CardContent>
         </Card>
-
-        <Card>
+        <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Categorias de Despesas</CardTitle>
+            <CardTitle>Atividade Recente</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            {dadosGraficoDespesas.length > 0 ? (
-              <ResponsivePie
-                data={dadosGraficoDespesas}
-                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                innerRadius={0.5}
-                padAngle={0.7}
-                cornerRadius={3}
-                activeOuterRadiusOffset={8}
-                colors={{ scheme: 'category10' }}
-                borderWidth={1}
-                borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-                enableArcLinkLabels={false}
-                arcLabelsSkipAngle={10}
-                arcLabelsTextColor="white"
-                tooltip={({ datum }) => (
-                  <div className="bg-background p-2 rounded-lg border">
-                    <strong>{datum.label}:</strong> {formatarMoeda(datum.value)}
-                  </div>
-                )}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Nenhuma despesa registrada
-              </div>
-            )}
+          <CardContent>
+            <div className="space-y-8">
+              {/* Lista de lançamentos recentes */}
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

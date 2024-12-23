@@ -35,7 +35,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       <div className="flex">
         <Sidebar />
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col">
           {/* Header */}
           <header className="border-b">
             <div className="flex h-16 items-center px-4 gap-4">
@@ -86,9 +86,21 @@ export default function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Main content */}
-          <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <main className="flex-1 p-6">
             {children}
           </main>
+          <footer className="border-t p-4">
+            <div className="container flex justify-between items-center text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <img src="/logo.svg" alt="FinanceiroPRO" className="w-5 h-5" />
+                <span>FinanceiroPRO v1.0</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>Desenvolvido por Plazer</span>
+                <sup>®</sup>
+              </div>
+            </div>
+          </footer>
           <Toaster />
         </div>
       </div>

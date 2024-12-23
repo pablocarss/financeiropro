@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { format } from 'date-fns';
 
 interface Categoria {
   id: string;
@@ -77,6 +78,23 @@ interface AppContextType {
   removerCentroCusto: (id: number) => void;
   removerTipoDocumento: (id: number) => void;
   removerLancamento: (id: number) => void;
+  calcularTotais: () => {
+    saldoTotal: number;
+    receitasTotal: number;
+    despesasTotal: number;
+    saldoMesAtual: number;
+    receitasMesAtual: number;
+    despesasMesAtual: number;
+  };
+  calcularTotaisPorCategoria: () => {
+    receitas: { id: number; nome: string; valor: number }[];
+    despesas: { id: number; nome: string; valor: number }[];
+  };
+  calcularTendencias: () => {
+    saldo: number;
+    receitas: number;
+    despesas: number;
+  };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -212,33 +230,147 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLancamentos(prev => prev.filter(item => item.id !== id));
   };
 
+  const calcularTotais = () => {
+    const hoje = new Date();
+    const mesAtual = format(hoje, 'yyyy-MM');
+
+    const totais = lancamentos.reduce(
+      (acc, lancamento) => {
+        const valor = Number(lancamento.valor) || 0;
+        const ehMesAtual = lancamento.competencia === mesAtual;
+
+        if (lancamento.tipo === 'entrada') {
+          acc.receitasTotal += valor;
+          if (ehMesAtual) acc.receitasMesAtual += valor;
+        } else if (lancamento.tipo === 'saida') {
+          acc.despesasTotal += valor;
+          if (ehMesAtual) acc.despesasMesAtual += valor;
+        }
+
+        return acc;
+      },
+      {
+        receitasTotal: 0,
+        despesasTotal: 0,
+        receitasMesAtual: 0,
+        despesasMesAtual: 0,
+      }
+    );
+
+    return {
+      ...totais,
+      saldoTotal: totais.receitasTotal - totais.despesasTotal,
+      saldoMesAtual: totais.receitasMesAtual - totais.despesasMesAtual,
+    };
+  };
+
+  const calcularTotaisPorCategoria = () => {
+    const totaisPorCategoria = lancamentos.reduce(
+      (acc, lancamento) => {
+        const categoria = categorias.find(c => c.id === String(lancamento.categoria));
+        if (!categoria) return acc;
+
+        const valor = Number(lancamento.valor) || 0;
+        const tipo = lancamento.tipo === 'entrada' ? 'receitas' : 'despesas';
+
+        const index = acc[tipo].findIndex(item => item.id === lancamento.categoria);
+        if (index === -1) {
+          acc[tipo].push({
+            id: lancamento.categoria,
+            nome: categoria.nome,
+            valor: valor,
+          });
+        } else {
+          acc[tipo][index].valor += valor;
+        }
+
+        return acc;
+      },
+      { receitas: [], despesas: [] } as {
+        receitas: { id: number; nome: string; valor: number }[];
+        despesas: { id: number; nome: string; valor: number }[];
+      }
+    );
+
+    return {
+      receitas: totaisPorCategoria.receitas.sort((a, b) => b.valor - a.valor),
+      despesas: totaisPorCategoria.despesas.sort((a, b) => b.valor - a.valor),
+    };
+  };
+
+  const calcularTendencias = () => {
+    const hoje = new Date();
+    const mesAtual = format(hoje, 'yyyy-MM');
+    const mesAnterior = format(new Date(hoje.getFullYear(), hoje.getMonth() - 1), 'yyyy-MM');
+
+    const totaisMesAtual = lancamentos
+      .filter(l => l.competencia === mesAtual)
+      .reduce(
+        (acc, l) => {
+          const valor = Number(l.valor) || 0;
+          if (l.tipo === 'entrada') acc.receitas += valor;
+          else if (l.tipo === 'saida') acc.despesas += valor;
+          return acc;
+        },
+        { receitas: 0, despesas: 0 }
+      );
+
+    const totaisMesAnterior = lancamentos
+      .filter(l => l.competencia === mesAnterior)
+      .reduce(
+        (acc, l) => {
+          const valor = Number(l.valor) || 0;
+          if (l.tipo === 'entrada') acc.receitas += valor;
+          else if (l.tipo === 'saida') acc.despesas += valor;
+          return acc;
+        },
+        { receitas: 0, despesas: 0 }
+      );
+
+    return {
+      receitas: totaisMesAnterior.receitas ? 
+        ((totaisMesAtual.receitas - totaisMesAnterior.receitas) / totaisMesAnterior.receitas) * 100 : 0,
+      despesas: totaisMesAnterior.despesas ? 
+        ((totaisMesAtual.despesas - totaisMesAnterior.despesas) / totaisMesAnterior.despesas) * 100 : 0,
+      saldo: totaisMesAnterior.receitas - totaisMesAnterior.despesas ? 
+        (((totaisMesAtual.receitas - totaisMesAtual.despesas) - 
+          (totaisMesAnterior.receitas - totaisMesAnterior.despesas)) / 
+          Math.abs(totaisMesAnterior.receitas - totaisMesAnterior.despesas)) * 100 : 0,
+    };
+  };
+
   return (
-    <AppContext.Provider value={{
-      categorias,
-      contasBancarias,
-      formasPagamento,
-      centrosCusto,
-      tiposDocumento,
-      lancamentos,
-      adicionarCategoria,
-      adicionarContaBancaria,
-      adicionarFormaPagamento,
-      adicionarCentroCusto,
-      adicionarTipoDocumento,
-      adicionarLancamento,
-      editarCategoria,
-      editarContaBancaria,
-      editarFormaPagamento,
-      editarCentroCusto,
-      editarTipoDocumento,
-      editarLancamento,
-      removerCategoria,
-      removerContaBancaria,
-      removerFormaPagamento,
-      removerCentroCusto,
-      removerTipoDocumento,
-      removerLancamento
-    }}>
+    <AppContext.Provider
+      value={{
+        categorias,
+        contasBancarias,
+        formasPagamento,
+        centrosCusto,
+        tiposDocumento,
+        lancamentos,
+        adicionarCategoria,
+        adicionarContaBancaria,
+        adicionarFormaPagamento,
+        adicionarCentroCusto,
+        adicionarTipoDocumento,
+        adicionarLancamento,
+        editarCategoria,
+        editarContaBancaria,
+        editarFormaPagamento,
+        editarCentroCusto,
+        editarTipoDocumento,
+        editarLancamento,
+        removerCategoria,
+        removerContaBancaria,
+        removerFormaPagamento,
+        removerCentroCusto,
+        removerTipoDocumento,
+        removerLancamento,
+        calcularTotais,
+        calcularTotaisPorCategoria,
+        calcularTendencias,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

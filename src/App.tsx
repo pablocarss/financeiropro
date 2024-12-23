@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Layout from "./components/layout/Layout"
 import Dashboard from "./pages/Dashboard"
+import Insights from "./pages/Insights"
 import Lancamentos from "./pages/Lancamentos"
 import Previsao from "./pages/Previsao"
 import ContasBancarias from "./pages/ContasBancarias"
@@ -19,9 +20,9 @@ import Login from "./pages/Login"
 import Registro from "./pages/Registro"
 import Perfil from "./pages/Perfil"
 import { useAuth } from "./contexts/AuthContext"
-import { Toaster } from "./components/ui/toaster"
 import { Loading } from "./components/ui/loading"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/toast"
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -53,9 +54,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AppProvider>
+        <AuthProvider>
           <TooltipProvider>
             <BrowserRouter>
               <Routes>
@@ -85,6 +86,16 @@ export default function App() {
                     <PrivateRoute>
                       <Layout>
                         <Dashboard />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/insights"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <Insights />
                       </Layout>
                     </PrivateRoute>
                   }
@@ -200,11 +211,11 @@ export default function App() {
                   }
                 />
               </Routes>
+              <Toaster />
             </BrowserRouter>
-            <Toaster />
           </TooltipProvider>
-        </AppProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </AppProvider>
     </ThemeProvider>
   )
 }

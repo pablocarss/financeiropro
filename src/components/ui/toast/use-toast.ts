@@ -1,4 +1,3 @@
-// Adapted from https://github.com/radix-ui/primitives/blob/main/packages/react/toast/src/Toast.tsx
 import * as React from "react"
 
 import type {
@@ -91,8 +90,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
@@ -180,7 +177,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,

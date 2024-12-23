@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useApp } from "@/contexts/AppContext"
 import { format } from "date-fns"
 import { Plus, Receipt, Filter } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -21,56 +21,89 @@ export default function Lancamentos() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filtroAberto, setFiltroAberto] = useState(false);
   const [filtros, setFiltros] = useState({
-    tipo: '',
-    categoria: '',
-    contaBancaria: '',
-    formaPagamento: '',
-    status: '',
+    tipo: 'todos',
+    categoria: 'todos',
+    contaBancaria: 'todos',
+    formaPagamento: 'todos',
+    status: 'todos',
     dataInicial: '',
     dataFinal: ''
   });
 
-  const [lancamentosFiltrados, setLancamentosFiltrados] = useState(lancamentos);
+  const [lancamentosFiltrados, setLancamentosFiltrados] = useState<typeof lancamentos>([]);
 
-  useEffect(() => {
-    aplicarFiltros();
-  }, [lancamentos, filtros]);
-
-  const aplicarFiltros = () => {
+  // Função memoizada para aplicar filtros
+  const aplicarFiltros = useCallback(() => {
     let resultado = [...lancamentos];
 
-    if (filtros.tipo) {
+    // Filtro por tipo
+    if (filtros.tipo && filtros.tipo !== 'todos') {
       resultado = resultado.filter(l => l.tipo === filtros.tipo);
     }
-    if (filtros.categoria) {
-      resultado = resultado.filter(l => l.categoria === Number(filtros.categoria));
-    }
-    if (filtros.contaBancaria) {
-      resultado = resultado.filter(l => l.contaBancaria === Number(filtros.contaBancaria));
-    }
-    if (filtros.formaPagamento) {
-      resultado = resultado.filter(l => l.formaPagamento === Number(filtros.formaPagamento));
-    }
-    if (filtros.status) {
-      resultado = resultado.filter(l => l.status === filtros.status);
-    }
-    if (filtros.dataInicial) {
-      resultado = resultado.filter(l => new Date(l.data) >= new Date(filtros.dataInicial));
-    }
-    if (filtros.dataFinal) {
-      resultado = resultado.filter(l => new Date(l.data) <= new Date(filtros.dataFinal));
+
+    // Filtro por categoria
+    if (filtros.categoria && filtros.categoria !== 'todos') {
+      resultado = resultado.filter(l => String(l.categoria) === filtros.categoria);
     }
 
+    // Filtro por conta bancária
+    if (filtros.contaBancaria && filtros.contaBancaria !== 'todos') {
+      resultado = resultado.filter(l => String(l.contaBancaria) === filtros.contaBancaria);
+    }
+
+    // Filtro por forma de pagamento
+    if (filtros.formaPagamento && filtros.formaPagamento !== 'todos') {
+      resultado = resultado.filter(l => String(l.formaPagamento) === filtros.formaPagamento);
+    }
+
+    // Filtro por status
+    if (filtros.status && filtros.status !== 'todos') {
+      resultado = resultado.filter(l => l.status === filtros.status);
+    }
+
+    // Filtro por data inicial
+    if (filtros.dataInicial) {
+      const dataInicial = new Date(filtros.dataInicial);
+      dataInicial.setHours(0, 0, 0, 0);
+      resultado = resultado.filter(l => {
+        const dataLancamento = new Date(l.data);
+        return dataLancamento >= dataInicial;
+      });
+    }
+
+    // Filtro por data final
+    if (filtros.dataFinal) {
+      const dataFinal = new Date(filtros.dataFinal);
+      dataFinal.setHours(23, 59, 59, 999);
+      resultado = resultado.filter(l => {
+        const dataLancamento = new Date(l.data);
+        return dataLancamento <= dataFinal;
+      });
+    }
+
+    // Ordenar por data (mais recente primeiro)
+    resultado.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
     setLancamentosFiltrados(resultado);
-  };
+  }, [lancamentos, filtros]);
+
+  // Atualiza os lançamentos filtrados quando os lançamentos ou filtros mudam
+  useEffect(() => {
+    aplicarFiltros();
+  }, [lancamentos, filtros, aplicarFiltros]);
+
+  // Inicializa os lançamentos filtrados quando a página carrega
+  useEffect(() => {
+    setLancamentosFiltrados([...lancamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()));
+  }, [lancamentos]);
 
   const limparFiltros = () => {
     setFiltros({
-      tipo: '',
-      categoria: '',
-      contaBancaria: '',
-      formaPagamento: '',
-      status: '',
+      tipo: 'todos',
+      categoria: 'todos',
+      contaBancaria: 'todos',
+      formaPagamento: 'todos',
+      status: 'todos',
       dataInicial: '',
       dataFinal: ''
     });
@@ -201,130 +234,114 @@ export default function Lancamentos() {
 
   return (
     <div className="space-y-4 p-4 bg-zinc-950 min-h-screen">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-100">Lançamentos</h1>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setFiltroAberto(true)}
-            className="bg-zinc-900 border-zinc-800 text-zinc-100 hover:bg-zinc-800"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filtros
-          </Button>
-          <Button onClick={() => setIsModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Lançamento
-          </Button>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogContent>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2 bg-zinc-900 border-zinc-800 text-zinc-100 hover:bg-zinc-800">
+                <Filter className="h-4 w-4" />
+                Filtros
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
               <DialogHeader>
-                <DialogTitle>Novo Lançamento</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-zinc-100">Filtros</DialogTitle>
               </DialogHeader>
+
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="descricao">Descrição</Label>
-                  <Input
-                    id="descricao"
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="valor">Valor</Label>
-                  <Input
-                    id="valor"
-                    type="number"
-                    value={valor}
-                    onChange={(e) => setValor(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tipo">Tipo</Label>
-                  <Select 
-                    value={tipo} 
-                    onValueChange={(value) => {
-                      setTipo(value)
-                      setCategoria("")
-                      if (data < new Date()) {
-                        setStatus(value === 'entrada' ? 'recebido' : 'pago')
-                      } else {
-                        setStatus(value === 'entrada' ? 'receber' : 'pagar')
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
+                <div>
+                  <Label className="text-zinc-300">Tipo</Label>
+                  <Select value={filtros.tipo} onValueChange={value => setFiltros(prev => ({ ...prev, tipo: value }))}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
                       <SelectItem value="entrada">Entrada</SelectItem>
                       <SelectItem value="saida">Saída</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="categoria">Categoria</Label>
-                  <Select value={categoria} onValueChange={setCategoria}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
+                <div>
+                  <Label className="text-zinc-300">Categoria</Label>
+                  <Select value={filtros.categoria} onValueChange={value => setFiltros(prev => ({ ...prev, categoria: value }))}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categorias
-                        ?.filter(cat => cat.tipo === tipo)
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.nome}
-                          </SelectItem>
+                      <SelectItem value="todos">Todas</SelectItem>
+                      {categorias.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
+                <div>
+                  <Label className="text-zinc-300">Conta Bancária</Label>
+                  <Select value={filtros.contaBancaria} onValueChange={value => setFiltros(prev => ({ ...prev, contaBancaria: value }))}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
-                      {data < new Date() ? (
-                        tipo === 'entrada' ? (
-                          <SelectItem value="recebido">Recebido</SelectItem>
-                        ) : (
-                          <SelectItem value="pago">Pago</SelectItem>
-                        )
-                      ) : (
-                        tipo === 'entrada' ? (
-                          <>
-                            <SelectItem value="receber">A Receber</SelectItem>
-                            <SelectItem value="recebido">Recebido</SelectItem>
-                          </>
-                        ) : (
-                          <>
-                            <SelectItem value="pagar">A Pagar</SelectItem>
-                            <SelectItem value="pago">Pago</SelectItem>
-                          </>
-                        )
-                      )}
+                      <SelectItem value="todos">Todas</SelectItem>
+                      {contasBancarias.map(conta => (
+                        <SelectItem key={conta.id} value={conta.id.toString()}>
+                          {conta.nome}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Data</Label>
+                <div>
+                  <Label className="text-zinc-300">Forma de Pagamento</Label>
+                  <Select value={filtros.formaPagamento} onValueChange={value => setFiltros(prev => ({ ...prev, formaPagamento: value }))}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas</SelectItem>
+                      {formasPagamento.map(forma => (
+                        <SelectItem key={forma.id} value={forma.id.toString()}>
+                          {forma.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-zinc-300">Status</Label>
+                  <Select value={filtros.status} onValueChange={value => setFiltros(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="pago">Pago</SelectItem>
+                      <SelectItem value="a_pagar">A Pagar</SelectItem>
+                      <SelectItem value="recebido">Recebido</SelectItem>
+                      <SelectItem value="a_receber">A Receber</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-zinc-300">Data Inicial</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-start text-left font-normal"
+                        className="w-full justify-start text-left font-normal bg-zinc-800 border-zinc-700 text-zinc-100"
                       >
-                        {data ? (
-                          format(data, "dd/MM/yyyy", { locale: ptBR })
+                        {filtros.dataInicial ? (
+                          format(new Date(filtros.dataInicial), "dd/MM/yyyy", { locale: ptBR })
                         ) : (
                           <span>Selecione uma data</span>
                         )}
@@ -333,156 +350,68 @@ export default function Lancamentos() {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={data}
-                        onSelect={(date) => setData(date || new Date())}
+                        selected={filtros.dataInicial ? new Date(filtros.dataInicial) : undefined}
+                        onSelect={(date) => 
+                          setFiltros(prev => ({ 
+                            ...prev, 
+                            dataInicial: date ? format(date, 'yyyy-MM-dd') : '' 
+                          }))
+                        }
                         initialFocus
-                        locale={ptBR}
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
 
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    onClick={() => handleSubmit(false)}
-                    className="flex-1"
-                  >
-                    Salvar
+                <div>
+                  <Label className="text-zinc-300">Data Final</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal bg-zinc-800 border-zinc-700 text-zinc-100"
+                      >
+                        {filtros.dataFinal ? (
+                          format(new Date(filtros.dataFinal), "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Selecione uma data</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={filtros.dataFinal ? new Date(filtros.dataFinal) : undefined}
+                        onSelect={(date) => 
+                          setFiltros(prev => ({ 
+                            ...prev, 
+                            dataFinal: date ? format(date, 'yyyy-MM-dd') : '' 
+                          }))
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" onClick={limparFiltros} className="bg-zinc-800 border-zinc-700 text-zinc-100 hover:bg-zinc-700">
+                    Limpar
                   </Button>
-                  <Button 
-                    onClick={() => handleSubmit(true)}
-                    variant="secondary"
-                    className="flex-1"
-                  >
-                    Salvar e Continuar
+                  <Button onClick={() => setFiltroAberto(false)} className="bg-purple-600 hover:bg-purple-700">
+                    Aplicar
                   </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
+
+          <Button onClick={() => setIsModalOpen(true)} className="bg-purple-600 hover:bg-purple-700 gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Lançamento
+          </Button>
         </div>
       </div>
-
-      <Dialog open={filtroAberto} onOpenChange={setFiltroAberto}>
-        <DialogPortal>
-          <DialogOverlay className="fixed inset-0 bg-black/50" />
-          <DialogContent className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-900 p-6 rounded-lg shadow-lg w-full max-w-md">
-            <DialogTitle className="text-lg font-bold mb-4 text-zinc-100">Filtros</DialogTitle>
-            
-            <div className="space-y-4">
-              <div>
-                <Label className="text-zinc-300">Tipo</Label>
-                <Select value={filtros.tipo} onValueChange={value => setFiltros(prev => ({ ...prev, tipo: value }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
-                    <SelectItem value="entrada">Entrada</SelectItem>
-                    <SelectItem value="saida">Saída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Categoria</Label>
-                <Select value={filtros.categoria} onValueChange={value => setFiltros(prev => ({ ...prev, categoria: value }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
-                    {categorias.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Conta Bancária</Label>
-                <Select value={filtros.contaBancaria} onValueChange={value => setFiltros(prev => ({ ...prev, contaBancaria: value }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
-                    {contasBancarias.map(conta => (
-                      <SelectItem key={conta.id} value={conta.id.toString()}>
-                        {conta.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Forma de Pagamento</Label>
-                <Select value={filtros.formaPagamento} onValueChange={value => setFiltros(prev => ({ ...prev, formaPagamento: value }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
-                    {formasPagamento.map(forma => (
-                      <SelectItem key={forma.id} value={forma.id.toString()}>
-                        {forma.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Status</Label>
-                <Select value={filtros.status} onValueChange={value => setFiltros(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
-                    <SelectItem value="pago">Pago</SelectItem>
-                    <SelectItem value="a_pagar">A Pagar</SelectItem>
-                    <SelectItem value="recebido">Recebido</SelectItem>
-                    <SelectItem value="a_receber">A Receber</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Data Inicial</Label>
-                <Input
-                  type="date"
-                  value={filtros.dataInicial}
-                  onChange={e => setFiltros(prev => ({ ...prev, dataInicial: e.target.value }))}
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
-                />
-              </div>
-
-              <div>
-                <Label className="text-zinc-300">Data Final</Label>
-                <Input
-                  type="date"
-                  value={filtros.dataFinal}
-                  onChange={e => setFiltros(prev => ({ ...prev, dataFinal: e.target.value }))}
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={limparFiltros} className="bg-zinc-800 border-zinc-700 text-zinc-100 hover:bg-zinc-700">
-                  Limpar
-                </Button>
-                <Button onClick={() => setFiltroAberto(false)} className="bg-purple-600 hover:bg-purple-700">
-                  Aplicar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </DialogPortal>
-      </Dialog>
 
       <div className="mt-8 mb-4 p-4 rounded-lg border">
         <div className="flex items-center justify-between">
@@ -540,6 +469,10 @@ export default function Lancamentos() {
           );
         })}
       </div>
+      <NovoLancamentoModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }

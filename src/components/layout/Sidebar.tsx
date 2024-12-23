@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   FileText,
   LayoutDashboard,
+  LineChart,
   ListTodo,
   Receipt,
   Tags,
@@ -21,6 +22,11 @@ const menuItems = [
     path: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    path: "/insights",
+    label: "Insights",
+    icon: LineChart,
   },
   {
     path: "/lancamentos",
@@ -79,15 +85,9 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex h-screen w-72 flex-col bg-background border-r">
-      <div className="p-6">
-        <Link to="/dashboard" className="flex items-center gap-2 px-4 py-3">
-          <img 
-            src="/public/vite.svg" 
-            alt="FinanceiroPRO" 
-            className="w-8 h-8"
-          />
-          <span className="font-bold text-xl">FinanceiroPRO</span>
-        </Link>
+      <div className="flex items-center gap-2 px-6 py-4">
+        <img src="/logo.svg" alt="FinanceiroPRO" className="w-8 h-8" />
+        <span className="font-semibold text-xl tracking-tight">FinanceiroPRO</span>
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
